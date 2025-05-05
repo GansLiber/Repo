@@ -5,8 +5,8 @@ from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta
-from .models import TimeSlot, Lesson, TutorSchedule
-from .forms import CustomLoginForm, TimeSlotForm
+from .models import TimeSlot, Lesson, TutorSchedule, LessonPhoto
+from .forms import CustomLoginForm, TimeSlotForm, BookSlotForm
 
 class CustomLoginView(LoginView):
     form_class = CustomLoginForm
@@ -110,32 +110,38 @@ def create_time_slot(request):
 @user_passes_test(is_student)
 def book_slot(request, slot_id):
     slot = get_object_or_404(TimeSlot, id=slot_id, status='available')
-    if request.method == 'POST':
-        # Проверяем, не занят ли слот
-        if slot.status != 'available':
-            messages.error(request, 'Этот слот уже занят.')
-            return redirect('student_dashboard')
-        
-        # Создаем занятие
-        lesson = Lesson.objects.create(
-            time_slot=slot,
-            student=request.user,
-            notes=request.POST.get('notes', '')
-        )
-        
-        # Обрабатываем загруженные фотографии
-        photos = request.FILES.getlist('photos')
-        if photos:
-            for photo in photos:
-                lesson.photos = photo
-                lesson.save()
-        
-        # Обновляем статус слота
-        slot.status = 'booked'
-        slot.student = request.user
-        slot.save()
-        
-        messages.success(request, 'Вы успешно записались на занятие!')
+    
+    # Проверяем, не существует ли уже урок для этого слота
+    if hasattr(slot, 'lesson'):
+        messages.error(request, 'Этот слот уже забронирован.')
         return redirect('student_dashboard')
-        
-    return render(request, 'scheduler/book_slot.html', {'slot': slot})
+    
+    if request.method == 'POST':
+        form = BookSlotForm(request.POST, request.FILES)
+        if form.is_valid():
+            lesson = form.save(commit=False)
+            lesson.time_slot = slot
+            lesson.student = request.user
+            lesson.save()
+            
+            # Обработка фото
+            photos = request.FILES.getlist('photos')
+            for photo in photos:
+                LessonPhoto.objects.create(
+                    lesson=lesson,
+                    photo=photo
+                )
+            
+            slot.status = 'booked'
+            slot.student = request.user
+            slot.save()
+            
+            messages.success(request, 'Слот успешно забронирован!')
+            return redirect('student_dashboard')
+    else:
+        form = BookSlotForm()
+    
+    return render(request, 'scheduler/book_slot.html', {
+        'form': form,
+        'slot': slot
+    })

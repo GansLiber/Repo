@@ -11,6 +11,33 @@
         </a>
     </div>
 
+    <!-- Модальное окно для просмотра фото -->
+    <div id="photoModal" class="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white p-4 rounded-lg max-w-4xl w-full mx-4 relative">
+            <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <div class="relative">
+                <button onclick="prevPhoto()" class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <button onclick="nextPhoto()" class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+                <img id="modalImage" src="" alt="Фото занятия" class="w-full h-auto rounded-lg">
+                <div class="text-center mt-2 text-sm text-gray-600">
+                    <span id="photoCounter"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Предстоящие слоты -->
         <div class="bg-white shadow rounded-lg p-6">
@@ -36,10 +63,17 @@
                                 {% if slot.lesson.notes %}
                                     <p class="mt-2 text-sm">Пожелания: {{ slot.lesson.notes }}</p>
                                 {% endif %}
-                                {% if slot.lesson.photos %}
+                                {% if slot.lesson.photos.exists %}
                                     <div class="mt-2">
                                         <p class="text-sm font-medium mb-1">Прикрепленные фото:</p>
-                                        <img src="{{ slot.lesson.photos.url }}" alt="Фото к занятию" class="max-w-xs rounded-lg shadow-sm">
+                                        <div class="flex flex-wrap gap-2">
+                                            {% for photo in slot.lesson.photos.all %}
+                                                <img src="{{ photo.thumbnail.url }}" 
+                                                     alt="Фото к занятию" 
+                                                     class="w-24 h-24 object-cover rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                                     onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ slot.lesson.photos.count }})">
+                                            {% endfor %}
+                                        </div>
                                     </div>
                                 {% endif %}
                             {% endif %}
@@ -73,10 +107,17 @@
                             {% if lesson.notes %}
                                 <p class="mt-2 text-sm">Пожелания: {{ lesson.notes }}</p>
                             {% endif %}
-                            {% if lesson.photos %}
+                            {% if lesson.photos.exists %}
                                 <div class="mt-2">
                                     <p class="text-sm font-medium mb-1">Прикрепленные фото:</p>
-                                    <img src="{{ lesson.photos.url }}" alt="Фото к занятию" class="max-w-xs rounded-lg shadow-sm">
+                                    <div class="flex flex-wrap gap-2">
+                                        {% for photo in lesson.photos.all %}
+                                            <img src="{{ photo.thumbnail.url }}" 
+                                                 alt="Фото к занятию" 
+                                                 class="w-24 h-24 object-cover rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                                 onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ lesson.photos.count }})">
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             {% endif %}
                         </div>
@@ -88,4 +129,71 @@
         </div>
     </div>
 </div>
+
+<script>
+let currentPhotoIndex = 0;
+let totalPhotos = 0;
+let photoUrls = [];
+
+function openModal(imageUrl, index, total) {
+    const modal = document.getElementById('photoModal');
+    const modalImage = document.getElementById('modalImage');
+    const photoCounter = document.getElementById('photoCounter');
+    
+    currentPhotoIndex = index;
+    totalPhotos = total;
+    photoUrls = Array.from(document.querySelectorAll('img[onclick*="openModal"]')).map(img => img.getAttribute('onclick').match(/'([^']+)'/)[1]);
+    
+    modalImage.src = imageUrl;
+    photoCounter.textContent = `${index + 1} / ${total}`;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    const modal = document.getElementById('photoModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function prevPhoto() {
+    if (currentPhotoIndex > 0) {
+        currentPhotoIndex--;
+        updatePhoto();
+    }
+}
+
+function nextPhoto() {
+    if (currentPhotoIndex < totalPhotos - 1) {
+        currentPhotoIndex++;
+        updatePhoto();
+    }
+}
+
+function updatePhoto() {
+    const modalImage = document.getElementById('modalImage');
+    const photoCounter = document.getElementById('photoCounter');
+    
+    modalImage.src = photoUrls[currentPhotoIndex];
+    photoCounter.textContent = `${currentPhotoIndex + 1} / ${totalPhotos}`;
+}
+
+// Закрытие модального окна при клике вне изображения
+document.getElementById('photoModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+// Закрытие модального окна по клавише Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    } else if (e.key === 'ArrowLeft') {
+        prevPhoto();
+    } else if (e.key === 'ArrowRight') {
+        nextPhoto();
+    }
+});
+</script>
 {% endblock %} 
