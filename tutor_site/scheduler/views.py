@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import TimeSlot, Lesson, TutorSchedule, LessonPhoto
 from .forms import CustomLoginForm, TimeSlotForm, BookSlotForm
+from django.core.exceptions import ValidationError
 
 class CustomLoginView(LoginView):
     form_class = CustomLoginForm
@@ -97,11 +98,15 @@ def create_time_slot(request):
     if request.method == 'POST':
         form = TimeSlotForm(request.POST)
         if form.is_valid():
-            time_slot = form.save(commit=False)
-            time_slot.tutor = request.user
-            time_slot.save()
-            messages.success(request, 'Слот успешно создан!')
-            return redirect('tutor_dashboard')
+            try:
+                time_slot = form.save(commit=False)
+                time_slot.tutor = request.user
+                time_slot.full_clean()  # Проверяем валидацию после установки tutor
+                time_slot.save()
+                messages.success(request, 'Слот успешно создан!')
+                return redirect('tutor_dashboard')
+            except ValidationError as e:
+                messages.error(request, str(e))
     else:
         form = TimeSlotForm()
     return render(request, 'scheduler/create_time_slot.html', {'form': form})

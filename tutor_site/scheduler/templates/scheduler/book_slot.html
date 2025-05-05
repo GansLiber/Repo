@@ -1,36 +1,29 @@
-{% extends 'base.html' %}
+{% extends 'scheduler/base.html' %}
+{% load static %}
 
 {% block title %}Бронирование слота{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">Бронирование слота</h1>
+<div class="max-w-2xl mx-auto p-6">
+    <h1 class="text-2xl font-bold mb-6">Забронировать урок</h1>
     
-    <div class="bg-white shadow rounded-lg p-6">
-        <div class="mb-6">
-            <h2 class="text-lg font-semibold mb-2">Информация о слоте</h2>
-            <p class="text-gray-600">Дата и время: {{ slot.datetime|date:"d.m.Y H:i" }}</p>
-            <p class="text-gray-600">Длительность: {{ slot.duration }} минут</p>
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="mb-4">
+            <p class="text-gray-600">Время: {{ slot.datetime|date:"d.m.Y H:i" }}</p>
+            <p class="text-gray-600">Преподаватель: {{ slot.tutor.get_full_name }}</p>
         </div>
 
-        <form method="post" enctype="multipart/form-data" class="space-y-6">
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
             {% csrf_token %}
             
-            <div>
-                <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    Пожелания к занятию
-                </label>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Заметки к уроку</label>
                 {{ form.notes }}
-                {% if form.notes.errors %}
-                    <p class="text-red-500 text-sm mt-1">{{ form.notes.errors.0 }}</p>
-                {% endif %}
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Фотографии (если есть)
-                </label>
-                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Фотографии</label>
+                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors duration-200">
                     <div class="space-y-1 text-center">
                         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                             <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -45,11 +38,18 @@
                         <p class="text-xs text-gray-500">PNG, JPG, GIF до 10MB</p>
                     </div>
                 </div>
-                <div id="photoPreview" class="mt-4 grid grid-cols-4 gap-4"></div>
+                
+                <!-- Preview area -->
+                <div id="preview" class="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <!-- Preview images will be inserted here -->
+                </div>
             </div>
 
-            <div class="flex justify-end">
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'student_dashboard' %}" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Отмена
+                </a>
+                <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     Забронировать
                 </button>
             </div>
@@ -58,85 +58,73 @@
 </div>
 
 <script>
-const photoInput = document.getElementById('id_photos');
-const photoPreview = document.getElementById('photoPreview');
-
-photoInput.addEventListener('change', function(e) {
-    photoPreview.innerHTML = '';
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('id_photos');
+    const preview = document.getElementById('preview');
     
-    Array.from(e.target.files).forEach((file, index) => {
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            const div = document.createElement('div');
-            div.className = 'relative group';
-            
-            reader.onload = function(e) {
-                div.innerHTML = `
-                    <img src="${e.target.result}" class="w-full h-24 object-cover rounded-lg">
-                    <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" onclick="removePhoto(${index})">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                `;
-            };
-            
-            reader.readAsDataURL(file);
-            photoPreview.appendChild(div);
-        }
+    input.addEventListener('change', function() {
+        preview.innerHTML = ''; // Clear existing previews
+        
+        [...this.files].forEach(file => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'relative group';
+                    div.innerHTML = `
+                        <div class="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden">
+                            <img src="${e.target.result}" class="w-full h-full object-cover">
+                        </div>
+                        <button type="button" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    `;
+                    preview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
     });
-});
 
-function removePhoto(index) {
-    const dt = new DataTransfer();
-    const files = photoInput.files;
+    // Drag and drop functionality
+    const dropZone = document.querySelector('.border-dashed');
     
-    for (let i = 0; i < files.length; i++) {
-        if (i !== index) {
-            dt.items.add(files[i]);
-        }
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
-    
-    photoInput.files = dt.files;
-    photoInput.dispatchEvent(new Event('change'));
-}
 
-// Drag and drop
-const dropZone = document.querySelector('.border-dashed');
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
 
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, preventDefaults, false);
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        dropZone.classList.add('border-blue-500');
+    }
+
+    function unhighlight(e) {
+        dropZone.classList.remove('border-blue-500');
+    }
+
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        input.files = files;
+        const event = new Event('change');
+        input.dispatchEvent(event);
+    }
 });
-
-function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-}
-
-['dragenter', 'dragover'].forEach(eventName => {
-    dropZone.addEventListener(eventName, highlight, false);
-});
-
-['dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, unhighlight, false);
-});
-
-function highlight(e) {
-    dropZone.classList.add('border-blue-500');
-}
-
-function unhighlight(e) {
-    dropZone.classList.remove('border-blue-500');
-}
-
-dropZone.addEventListener('drop', handleDrop, false);
-
-function handleDrop(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    
-    photoInput.files = files;
-    photoInput.dispatchEvent(new Event('change'));
-}
 </script>
 {% endblock %} 

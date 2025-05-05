@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.utils import timezone
 from PIL import Image
 import os
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -46,6 +47,34 @@ class TimeSlot(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='available')
     duration = models.IntegerField(default=60, help_text='Длительность в минутах')
     notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ['tutor', 'datetime']
+        ordering = ['datetime']
+
+    def clean(self):
+        # Проверяем, нет ли пересечений по времени с другими слотами
+        if self.datetime and self.duration and self.tutor_id:
+            slot_start = self.datetime
+            slot_end = self.datetime + timedelta(minutes=self.duration)
+            
+            # Проверяем пересечения с существующими слотами
+            overlapping_slots = TimeSlot.objects.filter(
+                tutor_id=self.tutor_id,
+                datetime__lt=slot_end,  # Начало существующего слота раньше конца нового
+            ).filter(
+                datetime__gte=slot_start - timedelta(minutes=self.duration)  # Конец существующего слота позже начала нового
+            )
+            
+            if self.pk:
+                overlapping_slots = overlapping_slots.exclude(pk=self.pk)
+                
+            if overlapping_slots.exists():
+                raise ValidationError('Это время пересекается с другим занятием. Учитывайте длительность занятий.')
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.tutor.username} - {self.datetime} ({self.status})"
