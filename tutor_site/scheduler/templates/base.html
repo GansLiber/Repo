@@ -1,0 +1,17 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Сайт репетитора{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <header class="p-4 bg-gray-800 text-white">
+        <h1 class="text-xl font-bold">Панель управления</h1>
+    </header>
+    <main class="p-4">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
