@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Запись на занятие{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
+    <h2 class="text-2xl font-bold mb-6">Запись на занятие</h2>
+    
+    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+        <h3 class="font-semibold mb-2">Информация о занятии:</h3>
+        <p><span class="font-medium">Дата и время:</span> {{ slot.datetime|date:"d.m.Y H:i" }}</p>
+        <p><span class="font-medium">Длительность:</span> {{ slot.duration }} минут</p>
+        <p><span class="font-medium">Репетитор:</span> {{ slot.tutor.get_full_name|default:slot.tutor.username }}</p>
+        {% if slot.notes %}
+            <p class="mt-2"><span class="font-medium">Заметки:</span> {{ slot.notes }}</p>
+        {% endif %}
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="notes">
+                Ваши пожелания к занятию (необязательно)
+            </label>
+            <textarea name="notes" id="notes" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="photos">
+                Прикрепить фотографии (необязательно)
+            </label>
+            <input type="file" name="photos" id="photos" accept="image/*" multiple
+                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <p class="text-sm text-gray-500 mt-1">Можно выбрать несколько файлов</p>
+        </div>
+        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Записаться на занятие
+        </button>
+    </form>
+</div>
+{% endblock %} 

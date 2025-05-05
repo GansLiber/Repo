@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta
 from .models import TimeSlot, Lesson, TutorSchedule
-from .forms import CustomLoginForm
+from .forms import CustomLoginForm, TimeSlotForm
 
 class CustomLoginView(LoginView):
     form_class = CustomLoginForm
@@ -95,15 +95,47 @@ def student_dashboard(request):
 @user_passes_test(is_tutor)
 def create_time_slot(request):
     if request.method == 'POST':
-        # TODO: Добавить форму для создания слотов
-        pass
-    return render(request, 'scheduler/create_time_slot.html')
+        form = TimeSlotForm(request.POST)
+        if form.is_valid():
+            time_slot = form.save(commit=False)
+            time_slot.tutor = request.user
+            time_slot.save()
+            messages.success(request, 'Слот успешно создан!')
+            return redirect('tutor_dashboard')
+    else:
+        form = TimeSlotForm()
+    return render(request, 'scheduler/create_time_slot.html', {'form': form})
 
 @login_required
 @user_passes_test(is_student)
 def book_slot(request, slot_id):
     slot = get_object_or_404(TimeSlot, id=slot_id, status='available')
     if request.method == 'POST':
-        # TODO: Добавить форму для бронирования
-        pass
+        # Проверяем, не занят ли слот
+        if slot.status != 'available':
+            messages.error(request, 'Этот слот уже занят.')
+            return redirect('student_dashboard')
+        
+        # Создаем занятие
+        lesson = Lesson.objects.create(
+            time_slot=slot,
+            student=request.user,
+            notes=request.POST.get('notes', '')
+        )
+        
+        # Обрабатываем загруженные фотографии
+        photos = request.FILES.getlist('photos')
+        if photos:
+            for photo in photos:
+                lesson.photos = photo
+                lesson.save()
+        
+        # Обновляем статус слота
+        slot.status = 'booked'
+        slot.student = request.user
+        slot.save()
+        
+        messages.success(request, 'Вы успешно записались на занятие!')
+        return redirect('student_dashboard')
+        
     return render(request, 'scheduler/book_slot.html', {'slot': slot})

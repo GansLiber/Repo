@@ -60,6 +60,7 @@ class Lesson(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='scheduled')
     homework = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    photos = models.ImageField(upload_to='lesson_photos/%Y/%m/%d/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

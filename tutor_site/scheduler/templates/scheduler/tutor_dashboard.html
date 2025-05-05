@@ -33,6 +33,15 @@
                             </div>
                             {% if slot.student %}
                                 <p class="mt-2 text-sm">Ученик: {{ slot.student.get_full_name|default:slot.student.username }}</p>
+                                {% if slot.lesson.notes %}
+                                    <p class="mt-2 text-sm">Пожелания: {{ slot.lesson.notes }}</p>
+                                {% endif %}
+                                {% if slot.lesson.photos %}
+                                    <div class="mt-2">
+                                        <p class="text-sm font-medium mb-1">Прикрепленные фото:</p>
+                                        <img src="{{ slot.lesson.photos.url }}" alt="Фото к занятию" class="max-w-xs rounded-lg shadow-sm">
+                                    </div>
+                                {% endif %}
                             {% endif %}
                         </div>
                     {% endfor %}
@@ -61,8 +70,14 @@
                                     {{ lesson.get_status_display }}
                                 </span>
                             </div>
-                            {% if lesson.homework %}
-                                <p class="mt-2 text-sm">Домашнее задание: {{ lesson.homework }}</p>
+                            {% if lesson.notes %}
+                                <p class="mt-2 text-sm">Пожелания: {{ lesson.notes }}</p>
+                            {% endif %}
+                            {% if lesson.photos %}
+                                <div class="mt-2">
+                                    <p class="text-sm font-medium mb-1">Прикрепленные фото:</p>
+                                    <img src="{{ lesson.photos.url }}" alt="Фото к занятию" class="max-w-xs rounded-lg shadow-sm">
+                                </div>
                             {% endif %}
                         </div>
                     {% endfor %}
