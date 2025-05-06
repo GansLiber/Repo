@@ -1,6 +1,7 @@
 from django import template
 from django.utils.dateformat import format
 from datetime import datetime
+from django.utils import timezone
 
 register = template.Library()
 
@@ -8,14 +9,9 @@ register = template.Library()
 def date_with_weekday(value):
     if not value:
         return ""
-    weekdays = {
-        0: 'понедельник',
-        1: 'вторник',
-        2: 'среда',
-        3: 'четверг',
-        4: 'пятница',
-        5: 'суббота',
-        6: 'воскресенье'
-    }
-    weekday = weekdays[value.weekday()]
-    return f"{value.strftime('%d.%m.%Y %H:%M')} ({weekday})" 
+    weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    return f"{value.strftime('%d.%m.%Y')} ({weekdays[value.weekday()]})"
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key) 

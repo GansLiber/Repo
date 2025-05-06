@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load scheduler_extras %}
+
+{% block title %}Ученик: {{ student.get_full_name|default:student.username }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                {{ student.get_full_name|default:student.username }}
+            </h1>
+            <p class="text-sm text-gray-500">{{ student.email }}</p>
+        </div>
+        <a href="{% url 'student_list' %}" class="text-blue-600 hover:text-blue-900">
+            ← Назад к списку учеников
+        </a>
+    </div>
+
+    <!-- Статистика -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900">Всего занятий</h3>
+            <p class="mt-2 text-3xl font-bold text-blue-600">{{ total_lessons }}</p>
+        </div>
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900">Завершено</h3>
+            <p class="mt-2 text-3xl font-bold text-green-600">{{ completed_lessons }}</p>
+        </div>
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900">Отменено</h3>
+            <p class="mt-2 text-3xl font-bold text-red-600">{{ cancelled_lessons }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Предстоящие занятия -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Предстоящие занятия</h2>
+            {% if upcoming_lessons %}
+                <div class="space-y-4">
+                    {% for lesson in upcoming_lessons %}
+                        <div class="border rounded-lg p-4 bg-blue-50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
+                                    <p class="text-sm text-gray-600">Длительность: {{ lesson.time_slot.duration }}</p>
+                                    <p class="text-sm text-gray-600">Предмет: {{ lesson.get_subject_display }}</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                    {{ lesson.get_status_display }}
+                                </span>
+                            </div>
+                            {% if lesson.notes %}
+                                <p class="mt-2 text-sm">Заметки: {{ lesson.notes }}</p>
+                            {% endif %}
+                            {% if lesson.photos.exists %}
+                                <div class="mt-2">
+                                    <p class="text-sm font-medium mb-1">Фотографии:</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        {% for photo in lesson.photos.all %}
+                                            <img src="{{ photo.thumbnail.url }}" 
+                                                 alt="Фото к занятию" 
+                                                 class="w-24 h-24 object-cover rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                                 onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ lesson.photos.count }})">
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Нет предстоящих занятий</p>
+            {% endif %}
+        </div>
+
+        <!-- Прошедшие занятия -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Прошедшие занятия</h2>
+            {% if past_lessons %}
+                <div class="space-y-4">
+                    {% for lesson in past_lessons %}
+                        <div class="border rounded-lg p-4 bg-gray-50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
+                                    <p class="text-sm text-gray-600">Длительность: {{ lesson.time_slot.duration }}</p>
+                                    <p class="text-sm text-gray-600">Предмет: {{ lesson.get_subject_display }}</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded-full 
+                                    {% if lesson.status == 'completed' %}bg-green-100 text-green-800
+                                    {% elif lesson.status == 'cancelled' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ lesson.get_status_display }}
+                                </span>
+                            </div>
+                            {% if lesson.notes %}
+                                <p class="mt-2 text-sm">Заметки: {{ lesson.notes }}</p>
+                            {% endif %}
+                            {% if lesson.photos.exists %}
+                                <div class="mt-2">
+                                    <p class="text-sm font-medium mb-1">Фотографии:</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        {% for photo in lesson.photos.all %}
+                                            <img src="{{ photo.thumbnail.url }}" 
+                                                 alt="Фото к занятию" 
+                                                 class="w-24 h-24 object-cover rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                                 onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ lesson.photos.count }})">
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Нет прошедших занятий</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра фото -->
+<div id="photoModal" class="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="display: none;">
+    <div class="bg-white p-4 rounded-lg max-w-4xl w-full mx-4 relative">
+        <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 z-10">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        <div class="relative">
+            <button onclick="prevPhoto()" class="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button onclick="nextPhoto()" class="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+            <img id="modalImage" src="" alt="Фото занятия" class="w-full h-auto rounded-lg">
+            <div class="text-center mt-2 text-sm text-gray-600">
+                <span id="photoCounter"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPhotoIndex = 0;
+let totalPhotos = 0;
+let photoUrls = [];
+
+function openModal(imageUrl, index, total) {
+    const modal = document.getElementById('photoModal');
+    const modalImage = document.getElementById('modalImage');
+    const photoCounter = document.getElementById('photoCounter');
+    
+    currentPhotoIndex = index;
+    totalPhotos = total;
+    photoUrls = Array.from(document.querySelectorAll('img[onclick*="openModal"]')).map(img => img.getAttribute('onclick').match(/'([^']+)'/)[1]);
+    
+    modalImage.src = imageUrl;
+    photoCounter.textContent = `${index + 1} / ${total}`;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    const modal = document.getElementById('photoModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function prevPhoto() {
+    if (currentPhotoIndex > 0) {
+        currentPhotoIndex--;
+        updatePhoto();
+    }
+}
+
+function nextPhoto() {
+    if (currentPhotoIndex < totalPhotos - 1) {
+        currentPhotoIndex++;
+        updatePhoto();
+    }
+}
+
+function updatePhoto() {
+    const modalImage = document.getElementById('modalImage');
+    const photoCounter = document.getElementById('photoCounter');
+    
+    modalImage.src = photoUrls[currentPhotoIndex];
+    photoCounter.textContent = `${currentPhotoIndex + 1} / ${totalPhotos}`;
+}
+
+// Закрытие модального окна при клике вне изображения
+document.getElementById('photoModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+// Закрытие модального окна по клавише Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    } else if (e.key === 'ArrowLeft') {
+        prevPhoto();
+    } else if (e.key === 'ArrowRight') {
+        nextPhoto();
+    }
+});
+</script>
+{% endblock %} 

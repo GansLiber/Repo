@@ -39,9 +39,10 @@ class TimeSlotForm(forms.ModelForm):
 class BookSlotForm(forms.ModelForm):
     class Meta:
         model = Lesson
-        fields = ['notes']
+        fields = ['subject', 'notes']
         widgets = {
-            'notes': forms.Textarea(attrs={'class': 'w-full px-3 py-2 border rounded-md', 'rows': 3}),
+            'subject': forms.Select(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500'}),
+            'notes': forms.Textarea(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500', 'rows': 3}),
         }
 
     photos = MultipleFileField(

@@ -18,6 +18,11 @@
             {% csrf_token %}
             
             <div class="space-y-2">
+                <label for="{{ form.subject.id_for_label }}" class="block text-sm font-medium text-gray-700">Предмет</label>
+                {{ form.subject }}
+            </div>
+
+            <div class="space-y-2">
                 <label class="block text-sm font-medium text-gray-700">Заметки к уроку</label>
                 {{ form.notes }}
             </div>

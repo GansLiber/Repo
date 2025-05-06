@@ -124,12 +124,26 @@ class Lesson(models.Model):
         ('cancelled', 'Отменено'),
     ]
 
+    SUBJECT_CHOICES = [
+        ('math', 'Математика'),
+        ('physics', 'Физика'),
+        ('chemistry', 'Химия'),
+        ('biology', 'Биология'),
+        ('english', 'Английский язык'),
+        ('russian', 'Русский язык'),
+        ('literature', 'Литература'),
+        ('history', 'История'),
+        ('geography', 'География'),
+        ('other', 'Другое'),
+    ]
+
     time_slot = models.OneToOneField(TimeSlot, on_delete=models.CASCADE, related_name='lesson')
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lessons')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='scheduled')
-    homework = models.TextField(blank=True)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='booked_lessons')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
+    subject = models.CharField(max_length=20, choices=SUBJECT_CHOICES, default='math')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.student.username} - {self.time_slot.datetime} ({self.status})"

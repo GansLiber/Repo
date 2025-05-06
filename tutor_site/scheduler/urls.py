@@ -14,7 +14,10 @@ urlpatterns = [
         template_name='scheduler/password_change_done.html'
     ), name='password_change_done'),
     path('tutor/', views.tutor_dashboard, name='tutor_dashboard'),
+    path('tutor/students/', views.student_list, name='student_list'),
+    path('tutor/students/<int:student_id>/', views.student_detail, name='student_detail'),
     path('student/', views.student_dashboard, name='student_dashboard'),
     path('tutor/create-slot/', views.create_time_slot, name='create_time_slot'),
     path('student/book-slot/<int:slot_id>/', views.book_slot, name='book_slot'),
+    path('tutor/calendar/', views.TutorCalendarView.as_view(), name='tutor_calendar'),
 ]

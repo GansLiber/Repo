@@ -1,13 +1,16 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
 from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta
 from .models import TimeSlot, Lesson, TutorSchedule, LessonPhoto
 from .forms import CustomLoginForm, TimeSlotForm, BookSlotForm
 from django.core.exceptions import ValidationError
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+import calendar
 
 class CustomLoginView(LoginView):
     form_class = CustomLoginForm
@@ -58,7 +61,7 @@ def tutor_dashboard(request):
         'slots': slots,
         'lessons': lessons,
         'upcoming_slots': slots.filter(datetime__gte=timezone.now()),
-        'past_lessons': lessons.filter(time_slot__datetime__lt=timezone.now()),
+        'past_lessons': lessons.filter(time_slot__datetime__lt=timezone.now()).order_by('-time_slot__datetime'),
     }
     return render(request, 'scheduler/tutor_dashboard.html', context)
 
@@ -75,15 +78,14 @@ def student_dashboard(request):
     ).order_by('datetime')
     
     my_lessons = Lesson.objects.filter(
-        student=request.user,
-        time_slot__datetime__range=[start_date, end_date]
+        student=request.user
     ).order_by('time_slot__datetime')
     
     context = {
         'available_slots': available_slots,
         'my_lessons': my_lessons,
         'upcoming_lessons': my_lessons.filter(time_slot__datetime__gte=timezone.now()),
-        'past_lessons': my_lessons.filter(time_slot__datetime__lt=timezone.now()),
+        'past_lessons': my_lessons.filter(time_slot__datetime__lt=timezone.now()).order_by('-time_slot__datetime'),
     }
     return render(request, 'scheduler/student_dashboard.html', context)
 
@@ -147,3 +149,120 @@ def book_slot(request, slot_id):
         'form': form,
         'slot': slot
     })
+
+@login_required
+@user_passes_test(is_tutor)
+def student_list(request):
+    # Получаем всех учеников преподавателя
+    students = User.objects.filter(
+        booked_slots__tutor=request.user
+    ).distinct().order_by('first_name', 'last_name')
+    
+    # Для каждого ученика получаем статистику
+    student_stats = []
+    for student in students:
+        lessons = Lesson.objects.filter(
+            student=student,
+            time_slot__tutor=request.user
+        )
+        total_lessons = lessons.count()
+        completed_lessons = lessons.filter(status='completed').count()
+        upcoming_lessons = lessons.filter(time_slot__datetime__gte=timezone.now()).count()
+        
+        student_stats.append({
+            'student': student,
+            'total_lessons': total_lessons,
+            'completed_lessons': completed_lessons,
+            'upcoming_lessons': upcoming_lessons,
+            'last_lesson': lessons.order_by('-time_slot__datetime').first()
+        })
+    
+    return render(request, 'scheduler/student_list.html', {
+        'student_stats': student_stats
+    })
+
+@login_required
+@user_passes_test(is_tutor)
+def student_detail(request, student_id):
+    student = get_object_or_404(User, id=student_id)
+    
+    # Получаем все занятия ученика
+    lessons = Lesson.objects.filter(
+        student=student,
+        time_slot__tutor=request.user
+    ).order_by('-time_slot__datetime')
+    
+    # Разделяем на предстоящие и прошедшие
+    upcoming_lessons = lessons.filter(time_slot__datetime__gte=timezone.now())
+    past_lessons = lessons.filter(time_slot__datetime__lt=timezone.now())
+    
+    # Статистика
+    total_lessons = lessons.count()
+    completed_lessons = lessons.filter(status='completed').count()
+    cancelled_lessons = lessons.filter(status='cancelled').count()
+    
+    return render(request, 'scheduler/student_detail.html', {
+        'student': student,
+        'upcoming_lessons': upcoming_lessons,
+        'past_lessons': past_lessons,
+        'total_lessons': total_lessons,
+        'completed_lessons': completed_lessons,
+        'cancelled_lessons': cancelled_lessons
+    })
+
+class TutorCalendarView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'scheduler/tutor_calendar.html'
+
+    def test_func(self):
+        return self.request.user.groups.filter(name='Tutors').exists()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Получаем текущую дату или дату из параметров
+        year = int(self.request.GET.get('year', timezone.now().year))
+        month = int(self.request.GET.get('month', timezone.now().month))
+        
+        # Создаем календарь
+        cal = calendar.monthcalendar(year, month)
+        
+        # Получаем все занятия на этот месяц
+        start_date = timezone.make_aware(datetime(year, month, 1))
+        if month == 12:
+            end_date = timezone.make_aware(datetime(year + 1, 1, 1))
+        else:
+            end_date = timezone.make_aware(datetime(year, month + 1, 1))
+            
+        lessons = Lesson.objects.filter(
+            time_slot__datetime__gte=start_date,
+            time_slot__datetime__lt=end_date,
+            time_slot__tutor=self.request.user
+        ).select_related('student', 'time_slot')
+        
+        # Создаем словарь занятий по дням
+        lessons_by_day = {}
+        for lesson in lessons:
+            day = lesson.time_slot.datetime.day
+            if day not in lessons_by_day:
+                lessons_by_day[day] = []
+            lessons_by_day[day].append(lesson)
+        
+        # Добавляем данные в контекст
+        today = timezone.localtime(timezone.now())
+        context.update({
+            'calendar': cal,
+            'lessons_by_day': lessons_by_day,
+            'year': year,
+            'month': month,
+            'month_name': calendar.month_name[month],
+            'prev_month': (month - 1) if month > 1 else 12,
+            'prev_year': year if month > 1 else year - 1,
+            'next_month': (month + 1) if month < 12 else 1,
+            'next_year': year if month < 12 else year + 1,
+            'day_names': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+            'today_day': today.day,
+            'today_month': today.month,
+            'today_year': today.year,
+        })
+        
+        return context

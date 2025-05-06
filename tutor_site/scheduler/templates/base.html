@@ -18,6 +18,8 @@
                     {% if user.is_authenticated %}
                         {% if user.groups.all.0.name == 'Tutors' %}
                             <a href="{% url 'tutor_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Панель управления</a>
+                            <a href="{% url 'student_list' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Мои ученики</a>
+                            <a href="{% url 'tutor_calendar' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Календарь</a>
                             <a href="{% url 'create_time_slot' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Создать слот</a>
                         {% elif user.groups.all.0.name == 'Students' %}
                             <a href="{% url 'student_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Мои занятия</a>
