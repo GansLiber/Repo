@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load scheduler_extras %}
 
 {% block title %}Панель управления репетитора{% endblock %}
 
@@ -48,7 +49,7 @@
                         <div class="border rounded-lg p-4 {% if slot.status == 'booked' %}bg-blue-50{% elif slot.status == 'available' %}bg-green-50{% else %}bg-gray-50{% endif %}">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="font-medium">{{ slot.datetime|date:"d.m.Y H:i" }}</p>
+                                    <p class="font-medium">{{ slot.datetime|date_with_weekday }}</p>
                                     <p class="text-sm text-gray-600">Длительность: {{ slot.duration }}</p>
                                 </div>
                                 <span class="px-2 py-1 text-xs rounded-full 
@@ -94,7 +95,7 @@
                         <div class="border rounded-lg p-4 bg-gray-50">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="font-medium">{{ lesson.time_slot.datetime|date:"d.m.Y H:i" }}</p>
+                                    <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
                                     <p class="text-sm text-gray-600">Ученик: {{ lesson.student.get_full_name|default:lesson.student.username }}</p>
                                 </div>
                                 <span class="px-2 py-1 text-xs rounded-full 

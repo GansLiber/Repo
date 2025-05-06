@@ -45,18 +45,13 @@ def home_view(request):
 @login_required
 @user_passes_test(is_tutor)
 def tutor_dashboard(request):
-    # Получаем слоты на ближайшие 7 дней
-    start_date = timezone.now()
-    end_date = start_date + timedelta(days=7)
-    
+    # Получаем все слоты
     slots = TimeSlot.objects.filter(
-        tutor=request.user,
-        datetime__range=[start_date, end_date]
+        tutor=request.user
     ).order_by('datetime')
     
     lessons = Lesson.objects.filter(
-        time_slot__tutor=request.user,
-        time_slot__datetime__range=[start_date, end_date]
+        time_slot__tutor=request.user
     ).order_by('time_slot__datetime')
     
     context = {
@@ -137,8 +132,10 @@ def book_slot(request, slot_id):
                     photo=photo
                 )
             
+            # Обновляем слот
             slot.status = 'booked'
             slot.student = request.user
+            slot.tutor = slot.tutor  # Сохраняем существующего преподавателя
             slot.save()
             
             messages.success(request, 'Слот успешно забронирован!')
