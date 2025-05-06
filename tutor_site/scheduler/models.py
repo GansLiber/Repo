@@ -147,3 +147,19 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - {self.time_slot.datetime} ({self.status})"
+
+class RecurringLessonTemplate(models.Model):
+    tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_templates_as_tutor')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_templates_as_student')
+    weekday = models.IntegerField(choices=[(i, day) for i, day in enumerate(['Пн','Вт','Ср','Чт','Пт','Сб','Вс'])])
+    time = models.TimeField()
+    duration = models.IntegerField(default=60)
+    subject = models.CharField(max_length=20, choices=Lesson.SUBJECT_CHOICES, default='math')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.student} {self.get_weekday_display()} {self.time} ({self.subject})"

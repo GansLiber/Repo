@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Шаблоны занятий{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold">Шаблоны занятий</h1>
+        <a href="{% url 'recurring_template_create' %}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Создать шаблон</a>
+    </div>
+    <div class="bg-white shadow rounded-lg p-6">
+        {% if templates %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-gray-500">
+                    <th class="text-left">Ученик</th>
+                    <th class="text-left">День</th>
+                    <th class="text-left">Время</th>
+                    <th class="text-left">Длительность</th>
+                    <th class="text-left">Предмет</th>
+                    <th class="text-left">Период</th>
+                    <th class="text-left">Статус</th>
+                    <th class="text-left"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in templates %}
+                <tr class="border-b last:border-0">
+                    <td>{{ t.student.get_full_name|default:t.student.username }}</td>
+                    <td>{{ t.get_weekday_display }}</td>
+                    <td>{{ t.time|time:'H:i' }}</td>
+                    <td>{{ t.duration }} мин</td>
+                    <td>{{ t.get_subject_display }}</td>
+                    <td>{{ t.start_date }}{% if t.end_date %} — {{ t.end_date }}{% endif %}</td>
+                    <td>{% if t.is_active %}<span class="text-green-600">Активен</span>{% else %}<span class="text-gray-400">Неактивен</span>{% endif %}</td>
+                    <td><a href="{% url 'recurring_template_edit' t.id %}" class="text-blue-600 hover:underline">Редактировать</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500">Нет шаблонов</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}{% if create %}Создать шаблон{% else %}Редактировать шаблон{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto bg-white shadow rounded-lg p-6 mt-8">
+    <h1 class="text-xl font-bold mb-4">{% if create %}Создать шаблон{% else %}Редактировать шаблон{% endif %}</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="space-y-4">
+            {{ form.non_field_errors }}
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Ученик</label>
+                {{ form.student }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">День недели</label>
+                {{ form.weekday }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Время</label>
+                {{ form.time }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Длительность (мин)</label>
+                {{ form.duration }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Предмет</label>
+                {{ form.subject }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Дата начала</label>
+                {{ form.start_date }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Дата окончания (опционально)</label>
+                {{ form.end_date }}
+            </div>
+            <div>
+                <label class="inline-flex items-center">
+                    {{ form.is_active }} <span class="ml-2">Активен</span>
+                </label>
+            </div>
+        </div>
+        <div class="flex gap-2 justify-end mt-6">
+            <a href="{% url 'recurring_templates_list' %}" class="px-4 py-2 rounded border">Назад</a>
+            <button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition">Сохранить</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

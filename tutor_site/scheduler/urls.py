@@ -20,4 +20,8 @@ urlpatterns = [
     path('tutor/create-slot/', views.create_time_slot, name='create_time_slot'),
     path('student/book-slot/<int:slot_id>/', views.book_slot, name='book_slot'),
     path('tutor/calendar/', views.TutorCalendarView.as_view(), name='tutor_calendar'),
+    path('student/cancel-lesson/<int:lesson_id>/', views.cancel_lesson, name='cancel_lesson'),
+    path('tutor/recurring-templates/', views.recurring_templates_list, name='recurring_templates_list'),
+    path('tutor/recurring-templates/create/', views.recurring_template_create, name='recurring_template_create'),
+    path('tutor/recurring-templates/<int:template_id>/edit/', views.recurring_template_edit, name='recurring_template_edit'),
 ]

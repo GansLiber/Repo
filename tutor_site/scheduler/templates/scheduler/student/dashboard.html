@@ -47,11 +47,16 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
-                                    <p class="text-sm text-gray-600">Длительность: {{ lesson.time_slot.duration }}</p>
+                                    <p class="text-sm text-gray-600">Время: {{ lesson.time_slot.datetime|time:'H:i' }}</p>
+                                    <p class="text-sm text-gray-600">Предмет: {{ lesson.get_subject_display }}</p>
+                                    <p class="text-sm text-gray-600">Преподаватель: {{ lesson.time_slot.tutor.get_full_name|default:lesson.time_slot.tutor.username }}</p>
                                 </div>
-                                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                                    {{ lesson.get_status_display }}
-                                </span>
+                                <div class="flex gap-2 items-center">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{{ lesson.get_status_display }}</span>
+                                    {% if lesson.status == 'scheduled' and lesson.time_slot.datetime|timeuntil > '12:00:00' %}
+                                        <a href="{% url 'cancel_lesson' lesson.id %}" class="text-red-600 hover:underline text-xs ml-2">Отменить</a>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% if lesson.homework %}
                                 <p class="mt-2 text-sm">Домашнее задание: {{ lesson.homework }}</p>
@@ -72,14 +77,21 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
-                                    <p class="text-sm text-gray-600">Длительность: {{ lesson.time_slot.duration }}</p>
+                                    <p class="text-sm text-gray-600">Время: {{ lesson.time_slot.datetime|time:'H:i' }}</p>
+                                    <p class="text-sm text-gray-600">Предмет: {{ lesson.get_subject_display }}</p>
+                                    <p class="text-sm text-gray-600">Преподаватель: {{ lesson.time_slot.tutor.get_full_name|default:lesson.time_slot.tutor.username }}</p>
                                 </div>
-                                <span class="px-2 py-1 text-xs rounded-full 
-                                    {% if lesson.status == 'completed' %}bg-green-100 text-green-800
-                                    {% elif lesson.status == 'cancelled' %}bg-red-100 text-red-800
-                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                    {{ lesson.get_status_display }}
-                                </span>
+                                <div class="flex gap-2 items-center">
+                                    <span class="px-2 py-1 text-xs rounded-full 
+                                        {% if lesson.status == 'completed' %}bg-green-100 text-green-800
+                                        {% elif lesson.status == 'cancelled' %}bg-red-100 text-red-800
+                                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ lesson.get_status_display }}
+                                    </span>
+                                    {% if lesson.status == 'scheduled' and lesson.time_slot.datetime|timeuntil > '12:00:00' %}
+                                        <a href="{% url 'cancel_lesson' lesson.id %}" class="text-red-600 hover:underline text-xs ml-2">Отменить</a>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% if lesson.homework %}
                                 <p class="mt-2 text-sm">Домашнее задание: {{ lesson.homework }}</p>

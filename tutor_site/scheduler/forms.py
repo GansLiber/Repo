@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
-from .models import TimeSlot, Lesson
+from .models import TimeSlot, Lesson, RecurringLessonTemplate
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
@@ -48,4 +48,14 @@ class BookSlotForm(forms.ModelForm):
     photos = MultipleFileField(
         widget=MultipleFileInput(attrs={'class': 'hidden'}),
         required=False
-    ) 
+    )
+
+class RecurringLessonTemplateForm(forms.ModelForm):
+    class Meta:
+        model = RecurringLessonTemplate
+        fields = ['student', 'weekday', 'time', 'duration', 'subject', 'start_date', 'end_date', 'is_active']
+        widgets = {
+            'time': forms.TimeInput(attrs={'type': 'time'}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+        } 

@@ -121,11 +121,43 @@
                                     </div>
                                 </div>
                             {% endif %}
+                            {% if lesson.status == 'cancelled' and lesson.notes %}
+                                <div class="mt-2 text-xs text-red-700 bg-red-50 rounded p-2">
+                                    <b>Причина отмены:</b> {{ lesson.notes|linebreaksbr }}
+                                </div>
+                            {% endif %}
                         </div>
                     {% endfor %}
                 </div>
             {% else %}
                 <p class="text-gray-500">Нет прошедших занятий</p>
+            {% endif %}
+        </div>
+
+        <!-- Отменённые занятия -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4 text-red-700">Отменённые занятия</h2>
+            {% if cancelled_lessons %}
+                <div class="space-y-4">
+                    {% for lesson in cancelled_lessons %}
+                        <div class="border rounded-lg p-4 bg-red-50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
+                                    <p class="text-sm text-gray-600">Ученик: {{ lesson.student.get_full_name|default:lesson.student.username }}</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">{{ lesson.get_status_display }}</span>
+                            </div>
+                            {% if lesson.notes %}
+                                <div class="mt-2 text-xs text-red-700 bg-red-100 rounded p-2">
+                                    <b>Причина отмены:</b> {{ lesson.notes|linebreaksbr }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Нет отменённых занятий</p>
             {% endif %}
         </div>
     </div>
