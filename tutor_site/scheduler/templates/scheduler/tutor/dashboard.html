@@ -4,6 +4,31 @@
 {% block title %}Панель управления репетитора{% endblock %}
 
 {% block content %}
+<style>
+    details {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        height: 100%;
+    }
+    
+    summary {
+        padding: 1rem;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+    
+    details > div {
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    details[open] summary {
+        border-bottom: 1px solid #e5e7eb;
+    }
+</style>
+
 <div class="space-y-6">
     <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-900">Панель управления</h1>
@@ -41,102 +66,109 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Предстоящие слоты -->
-        <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Предстоящие слоты</h2>
-            {% if upcoming_slots %}
-                <div class="space-y-4">
-                    {% for slot in upcoming_slots %}
-                        <div class="border rounded-lg p-4 {% if slot.status == 'booked' %}bg-blue-50{% elif slot.status == 'available' %}bg-green-50{% else %}bg-gray-50{% endif %}">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="font-medium">{{ slot.datetime|date_with_weekday }}</p>
-                                    <p class="text-sm text-gray-600">Длительность: {{ slot.duration }}</p>
+        <details open class="h-full">
+            <summary class="text-xl font-semibold text-gray-900">Предстоящие слоты</summary>
+            <div>
+                {% if upcoming_slots %}
+                    <div class="space-y-4">
+                        {% for slot in upcoming_slots %}
+                            <div class="border rounded-lg p-4 {% if slot.status == 'booked' %}bg-blue-50{% elif slot.status == 'available' %}bg-green-50{% else %}bg-gray-50{% endif %}">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="font-medium">{{ slot.datetime|date_with_weekday }}</p>
+                                        <p class="text-sm text-gray-600">Длительность: {{ slot.duration }}</p>
+                                    </div>
+                                    <span class="px-2 py-1 text-xs rounded-full 
+                                        {% if slot.status == 'available' %}bg-green-100 text-green-800
+                                        {% elif slot.status == 'booked' %}bg-blue-100 text-blue-800
+                                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ slot.get_status_display }}
+                                    </span>
                                 </div>
-                                <span class="px-2 py-1 text-xs rounded-full 
-                                    {% if slot.status == 'available' %}bg-green-100 text-green-800
-                                    {% elif slot.status == 'booked' %}bg-blue-100 text-blue-800
-                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                    {{ slot.get_status_display }}
-                                </span>
-                            </div>
-                            {% if slot.student %}
-                                <p class="mt-2 text-sm">Ученик: {{ slot.student.get_full_name|default:slot.student.username }}</p>
-                                {% if slot.lesson.notes %}
-                                    <p class="mt-2 text-sm">Пожелания: {{ slot.lesson.notes }}</p>
+                                {% if slot.student %}
+                                    <p class="mt-2 text-sm">Ученик: {{ slot.student.get_full_name|default:slot.student.username }}</p>
+                                    {% if slot.lesson.notes %}
+                                        <p class="mt-2 text-sm">Пожелания: {{ slot.lesson.notes }}</p>
+                                    {% endif %}
+                                    {% if slot.lesson.photos.exists %}
+                                        <div class="mt-2">
+                                            <p class="text-sm font-medium mb-1">Прикрепленные фото:</p>
+                                            <div class="flex flex-wrap gap-2">
+                                                {% for photo in slot.lesson.photos.all %}
+                                                    <img src="{{ photo.thumbnail.url }}" 
+                                                         alt="Фото к занятию" 
+                                                         class="w-24 h-24 object-cover rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                                         onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ slot.lesson.photos.count }})">
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
                                 {% endif %}
-                                {% if slot.lesson.photos.exists %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500">Нет предстоящих слотов</p>
+                {% endif %}
+            </div>
+        </details>
+
+        <!-- Прошедшие занятия -->
+        <details open class="h-full">
+            <summary class="text-xl font-semibold text-gray-900">Прошедшие занятия</summary>
+            <div>
+                {% if past_lessons %}
+                    <div class="space-y-4">
+                        {% for lesson in past_lessons %}
+                            <div class="border rounded-lg p-4 bg-gray-50">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
+                                        <p class="text-sm text-gray-600">Ученик: {{ lesson.student.get_full_name|default:lesson.student.username }}</p>
+                                    </div>
+                                    {% if lesson.status == "scheduled" and lesson.time_slot.datetime < now %}
+                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Завершено</span>
+                                    {% elif lesson.status == "cancelled" %}
+                                        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Отменено</span>
+                                    {% else %}
+                                        <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">{{ lesson.get_status_display }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if lesson.notes %}
+                                    <p class="mt-2 text-sm">Пожелания: {{ lesson.notes }}</p>
+                                {% endif %}
+                                {% if lesson.photos.exists %}
                                     <div class="mt-2">
                                         <p class="text-sm font-medium mb-1">Прикрепленные фото:</p>
                                         <div class="flex flex-wrap gap-2">
-                                            {% for photo in slot.lesson.photos.all %}
+                                            {% for photo in lesson.photos.all %}
                                                 <img src="{{ photo.thumbnail.url }}" 
                                                      alt="Фото к занятию" 
                                                      class="w-24 h-24 object-cover rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
-                                                     onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ slot.lesson.photos.count }})">
+                                                     onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ lesson.photos.count }})">
                                             {% endfor %}
                                         </div>
                                     </div>
                                 {% endif %}
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-gray-500">Нет предстоящих слотов</p>
-            {% endif %}
-        </div>
-
-        <!-- Прошедшие занятия -->
-        <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Прошедшие занятия</h2>
-            {% if past_lessons %}
-                <div class="space-y-4">
-                    {% for lesson in past_lessons %}
-                        <div class="border rounded-lg p-4 bg-gray-50">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
-                                    <p class="text-sm text-gray-600">Ученик: {{ lesson.student.get_full_name|default:lesson.student.username }}</p>
-                                </div>
-                                <span class="px-2 py-1 text-xs rounded-full 
-                                    {% if lesson.status == 'completed' %}bg-green-100 text-green-800
-                                    {% elif lesson.status == 'cancelled' %}bg-red-100 text-red-800
-                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                    {{ lesson.get_status_display }}
-                                </span>
-                            </div>
-                            {% if lesson.notes %}
-                                <p class="mt-2 text-sm">Пожелания: {{ lesson.notes }}</p>
-                            {% endif %}
-                            {% if lesson.photos.exists %}
-                                <div class="mt-2">
-                                    <p class="text-sm font-medium mb-1">Прикрепленные фото:</p>
-                                    <div class="flex flex-wrap gap-2">
-                                        {% for photo in lesson.photos.all %}
-                                            <img src="{{ photo.thumbnail.url }}" 
-                                                 alt="Фото к занятию" 
-                                                 class="w-24 h-24 object-cover rounded-lg shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
-                                                 onclick="openModal('{{ photo.photo.url }}', {{ forloop.counter0 }}, {{ lesson.photos.count }})">
-                                        {% endfor %}
+                                {% if lesson.status == 'cancelled' and lesson.notes %}
+                                    <div class="mt-2 text-xs text-red-700 bg-red-50 rounded p-2">
+                                        <b>Причина отмены:</b> {{ lesson.notes|linebreaksbr }}
                                     </div>
-                                </div>
-                            {% endif %}
-                            {% if lesson.status == 'cancelled' and lesson.notes %}
-                                <div class="mt-2 text-xs text-red-700 bg-red-50 rounded p-2">
-                                    <b>Причина отмены:</b> {{ lesson.notes|linebreaksbr }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-gray-500">Нет прошедших занятий</p>
-            {% endif %}
-        </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500">Нет прошедших занятий</p>
+                {% endif %}
+            </div>
+        </details>
+    </div>
 
-        <!-- Отменённые занятия -->
-        <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4 text-red-700">Отменённые занятия</h2>
+    <!-- Отменённые занятия -->
+    <details class="h-full">
+        <summary class="text-xl font-semibold text-red-700">Отменённые занятия</summary>
+        <div>
             {% if cancelled_lessons %}
                 <div class="space-y-4">
                     {% for lesson in cancelled_lessons %}
@@ -160,7 +192,7 @@
                 <p class="text-gray-500">Нет отменённых занятий</p>
             {% endif %}
         </div>
-    </div>
+    </details>
 </div>
 
 <script>

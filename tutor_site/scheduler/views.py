@@ -61,6 +61,7 @@ def tutor_dashboard(request):
     cancelled_lessons = lessons.filter(status='cancelled')
     
     context = {
+        'now': timezone.now(),
         'slots': slots,
         'lessons': lessons,
         'upcoming_slots': slots.filter(datetime__gte=timezone.now()),
@@ -74,6 +75,7 @@ def tutor_dashboard(request):
 def student_dashboard(request):
     # Получаем слоты на ближайшие 7 дней
     start_date = timezone.now()
+    
     end_date = start_date + timedelta(days=7)
     
     available_slots = TimeSlot.objects.filter(
@@ -86,6 +88,7 @@ def student_dashboard(request):
     ).order_by('time_slot__datetime')
     
     context = {
+        'now': timezone.now(),
         'available_slots': available_slots,
         'my_lessons': my_lessons,
         'upcoming_lessons': my_lessons.filter(time_slot__datetime__gte=timezone.now()),
@@ -121,18 +124,25 @@ def book_slot(request, slot_id):
         messages.error(request, 'Запись на это занятие уже закрыта (менее чем за 12 часов до начала).')
         return redirect('student_dashboard')
     
-    # Проверяем, не существует ли уже урок для этого слота
-    if hasattr(slot, 'lesson'):
+    # Проверяем, не существует ли уже урок для этого слота и он не отменён
+    if hasattr(slot, 'lesson') and slot.lesson.status != 'cancelled':
         messages.error(request, 'Этот слот уже забронирован.')
         return redirect('student_dashboard')
     
     if request.method == 'POST':
         form = BookSlotForm(request.POST, request.FILES)
         if form.is_valid():
-            lesson = form.save(commit=False)
-            lesson.time_slot = slot
-            lesson.student = request.user
-            lesson.save()
+            if hasattr(slot, 'lesson') and slot.lesson.status == 'cancelled':
+                # Реанимируем отменённый lesson
+                lesson = slot.lesson
+                lesson.status = 'scheduled'
+                lesson.student = request.user
+                lesson.save()
+            else:
+                lesson = form.save(commit=False)
+                lesson.time_slot = slot
+                lesson.student = request.user
+                lesson.save()
             
             # Обработка фото
             photos = request.FILES.getlist('photos')
@@ -153,7 +163,7 @@ def book_slot(request, slot_id):
     else:
         form = BookSlotForm()
     
-    return render(request, 'scheduler/book_slot.html', {
+    return render(request, 'scheduler/student/book_slot.html', {
         'form': form,
         'slot': slot
     })
@@ -295,13 +305,21 @@ def ensure_recurring_slots_for_tutor(tutor):
                 if cur.weekday() == template.weekday:
                     dt = datetime.combine(cur, template.time)
                     dt = timezone.make_aware(dt)
-                    # Проверяем, есть ли уже слот для этого времени и ученика
-                    exists = TimeSlot.objects.filter(
+                    # Проверяем, есть ли отменённый lesson на эту дату
+                    cancelled_lesson_exists = Lesson.objects.filter(
+                        time_slot__tutor=tutor,
+                        time_slot__student=template.student,
+                        time_slot__datetime=dt,
+                        status='cancelled'
+                    ).exists()
+
+                    # Проверяем, есть ли уже слот (любого статуса)
+                    slot_exists = TimeSlot.objects.filter(
                         tutor=tutor,
-                        student=template.student,
                         datetime=dt
                     ).exists()
-                    if not exists:
+
+                    if not slot_exists and not cancelled_lesson_exists:
                         slot = TimeSlot.objects.create(
                             tutor=tutor,
                             student=template.student,
