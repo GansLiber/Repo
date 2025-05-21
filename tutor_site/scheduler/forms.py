@@ -27,6 +27,12 @@ class CustomLoginForm(AuthenticationForm):
     )
 
 class TimeSlotForm(forms.ModelForm):
+    def clean_duration(self):
+        duration = self.cleaned_data.get('duration')
+        if duration <= 0:
+            raise forms.ValidationError('Длительность должна быть больше 0 минут')
+        return duration
+
     class Meta:
         model = TimeSlot
         fields = ['datetime', 'duration', 'notes']

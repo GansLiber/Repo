@@ -30,8 +30,8 @@ class TutorSchedule(models.Model):
         return f"{self.tutor.username} - {self.get_day_of_week_display()} {self.start_time}-{self.end_time}"
 
     def get_day_of_week_display(self):
-        days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
-        return days[self.day_of_week]
+        day_map = dict(self.DAYS_OF_WEEK)
+        return day_map[self.day_of_week]
 
 class TimeSlot(models.Model):
     STATUS_CHOICES = [

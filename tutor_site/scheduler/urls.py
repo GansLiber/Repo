@@ -17,6 +17,7 @@ urlpatterns = [
     path('tutor/students/', views.student_list, name='student_list'),
     path('tutor/students/<int:student_id>/', views.student_detail, name='student_detail'),
     path('student/', views.student_dashboard, name='student_dashboard'),
+    path('student/profile/', views.student_profile, name='student_profile'),
     path('tutor/create-slot/', views.create_time_slot, name='create_time_slot'),
     path('student/book-slot/<int:slot_id>/', views.book_slot, name='book_slot'),
     path('tutor/calendar/', views.TutorCalendarView.as_view(), name='tutor_calendar'),

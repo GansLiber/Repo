@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load scheduler_extras %}
+
+{% block title %}Мой профиль{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                Мой профиль
+            </h1>
+            <p class="text-sm text-gray-500">{{ user.email }}</p>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900">Всего занятий</h3>
+            <p class="mt-2 text-3xl font-bold text-blue-600">{{ total_lessons }}</p>
+        </div>
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900">Завершено</h3>
+            <p class="mt-2 text-3xl font-bold text-green-600">{{ completed_lessons }}</p>
+        </div>
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900">Отменено</h3>
+            <p class="mt-2 text-3xl font-bold text-red-600">{{ cancelled_lessons }}</p>
+        </div>
+    </div>
+
+    <!-- Статистика по предметам -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Статистика по предметам</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for subject, count in subjects_stats.items %}
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="font-medium text-gray-900">{{ subject }}</h4>
+                <p class="text-2xl font-bold text-blue-600">{{ count }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Мои преподаватели -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Мои преподаватели</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for tutor in tutors %}
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="font-medium text-gray-900">{{ tutor.get_full_name|default:tutor.username }}</h4>
+                <p class="text-sm text-gray-500">{{ tutor.email }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Предстоящие занятия -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Предстоящие занятия</h2>
+            {% if upcoming_lessons %}
+                <div class="space-y-4">
+                    {% for lesson in upcoming_lessons %}
+                        <div class="border rounded-lg p-4 bg-blue-50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
+                                    <p class="text-sm text-gray-600">Длительность: {{ lesson.time_slot.duration }} мин</p>
+                                    <p class="text-sm text-gray-600">Предмет: {{ lesson.get_subject_display }}</p>
+                                    <p class="text-sm text-gray-600">Преподаватель: {{ lesson.time_slot.tutor.get_full_name|default:lesson.time_slot.tutor.username }}</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                    {{ lesson.get_status_display }}
+                                </span>
+                            </div>
+                            {% if lesson.notes %}
+                                <p class="mt-2 text-sm">Заметки: {{ lesson.notes }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Нет предстоящих занятий</p>
+            {% endif %}
+        </div>
+
+        <!-- Прошедшие занятия -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Прошедшие занятия</h2>
+            {% if past_lessons %}
+                <div class="space-y-4">
+                    {% for lesson in past_lessons %}
+                        <div class="border rounded-lg p-4 bg-gray-50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-medium">{{ lesson.time_slot.datetime|date_with_weekday }}</p>
+                                    <p class="text-sm text-gray-600">Длительность: {{ lesson.time_slot.duration }} мин</p>
+                                    <p class="text-sm text-gray-600">Предмет: {{ lesson.get_subject_display }}</p>
+                                    <p class="text-sm text-gray-600">Преподаватель: {{ lesson.time_slot.tutor.get_full_name|default:lesson.time_slot.tutor.username }}</p>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded-full 
+                                    {% if lesson.status == 'completed' %}bg-green-100 text-green-800
+                                    {% elif lesson.status == 'cancelled' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ lesson.get_status_display }}
+                                </span>
+                            </div>
+                            {% if lesson.notes %}
+                                <p class="mt-2 text-sm">Заметки: {{ lesson.notes }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Нет прошедших занятий</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

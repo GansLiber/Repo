@@ -97,6 +97,46 @@ def student_dashboard(request):
     return render(request, 'scheduler/student/dashboard.html', context)
 
 @login_required
+@user_passes_test(is_student)
+def student_profile(request):
+    # Получаем все занятия ученика
+    lessons = Lesson.objects.filter(
+        student=request.user
+    ).order_by('-time_slot__datetime')
+    
+    # Разделяем на предстоящие и прошедшие
+    upcoming_lessons = lessons.filter(time_slot__datetime__gte=timezone.now())
+    past_lessons = lessons.filter(time_slot__datetime__lt=timezone.now())
+    
+    # Статистика
+    total_lessons = lessons.count()
+    completed_lessons = lessons.filter(status='completed').count()
+    cancelled_lessons = lessons.filter(status='cancelled').count()
+    
+    # Статистика по предметам
+    subjects_stats = {}
+    for lesson in lessons:
+        subject = lesson.get_subject_display()
+        if subject not in subjects_stats:
+            subjects_stats[subject] = 0
+        subjects_stats[subject] += 1
+    
+    # Преподаватели
+    tutors = User.objects.filter(
+        time_slots__lesson__student=request.user
+    ).distinct()
+    
+    return render(request, 'scheduler/student/profile.html', {
+        'upcoming_lessons': upcoming_lessons,
+        'past_lessons': past_lessons,
+        'total_lessons': total_lessons,
+        'completed_lessons': completed_lessons,
+        'cancelled_lessons': cancelled_lessons,
+        'subjects_stats': subjects_stats,
+        'tutors': tutors
+    })
+
+@login_required
 @user_passes_test(is_tutor)
 def create_time_slot(request):
     if request.method == 'POST':

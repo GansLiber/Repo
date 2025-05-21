@@ -26,6 +26,7 @@
                             <a href="{% url 'create_time_slot' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Создать слот</a>
                         {% elif user.groups.all.0.name == 'Students' %}
                             <a href="{% url 'student_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Мои занятия</a>
+                            <a href="{% url 'student_profile' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Мой профиль</a>
                         {% endif %}
                         <div class="relative group">
                             <button class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 flex items-center">
