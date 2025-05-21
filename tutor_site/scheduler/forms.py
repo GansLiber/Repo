@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from .models import TimeSlot, Lesson, RecurringLessonTemplate
+from django.contrib.auth.models import User
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
@@ -57,6 +58,16 @@ class BookSlotForm(forms.ModelForm):
     )
 
 class RecurringLessonTemplateForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        tutor = kwargs.pop('tutor', None)
+        super().__init__(*args, **kwargs)
+        if tutor:
+            # Ограничиваем выбор студентов только активными студентами этого преподавателя
+            self.fields['student'].queryset = User.objects.filter(
+                tutors_list__tutor=tutor,
+                tutors_list__is_active=True
+            )
+
     class Meta:
         model = RecurringLessonTemplate
         fields = ['student', 'weekday', 'time', 'duration', 'subject', 'start_date', 'end_date', 'is_active']

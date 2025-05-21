@@ -1,16 +1,15 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import TutorSchedule, TimeSlot, Lesson, LessonPhoto, RecurringLessonTemplate
+from .models import TutorSchedule, TimeSlot, Lesson, LessonPhoto, RecurringLessonTemplate, UserProfile, ResourceLink, TutorStudent
 
-class CustomUserAdmin(UserAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'get_groups')
-    list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
-    search_fields = ('username', 'first_name', 'last_name', 'email')
-    
-    def get_groups(self, obj):
-        return ", ".join([g.name for g in obj.groups.all()])
-    get_groups.short_description = 'Группы'
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'profile'
+
+class UserAdmin(BaseUserAdmin):
+    inlines = (UserProfileInline,)
 
 @admin.register(TutorSchedule)
 class TutorScheduleAdmin(admin.ModelAdmin):
@@ -49,6 +48,27 @@ class RecurringLessonTemplateAdmin(admin.ModelAdmin):
     search_fields = ('tutor__username', 'student__username', 'subject')
     ordering = ('-start_date',)
 
+@admin.register(ResourceLink)
+class ResourceLinkAdmin(admin.ModelAdmin):
+    list_display = ('title', 'category', 'created_by', 'created_at')
+    list_filter = ('category', 'created_by')
+    search_fields = ('title', 'description')
+    filter_horizontal = ('shared_with',)
+
+@admin.register(TutorStudent)
+class TutorStudentAdmin(admin.ModelAdmin):
+    list_display = ('tutor', 'student', 'is_active', 'created_at')
+    list_filter = ('is_active', 'tutor', 'created_at')
+    search_fields = ('tutor__username', 'tutor__first_name', 'student__username', 'student__first_name')
+    raw_id_fields = ('tutor', 'student')
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "student":
+            kwargs["queryset"] = User.objects.filter(groups__name='Students')
+        elif db_field.name == "tutor":
+            kwargs["queryset"] = User.objects.filter(groups__name='Tutors')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 # Unregister the default User admin and register our custom one
 admin.site.unregister(User)
-admin.site.register(User, CustomUserAdmin)
+admin.site.register(User, UserAdmin)

@@ -1,17 +1,26 @@
 {% extends 'base.html' %}
 {% load scheduler_extras %}
 
-{% block title %}Мой профиль{% endblock %}
+{% block title %}{% if is_tutor_view %}Профиль {{ user.get_full_name|default:user.username }}{% else %}Мой профиль{% endif %}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <div class="flex justify-between items-center">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">
-                Мой профиль
+                {% if is_tutor_view %}
+                    Профиль {{ user.get_full_name|default:user.username }}
+                {% else %}
+                    Мой профиль
+                {% endif %}
             </h1>
             <p class="text-sm text-gray-500">{{ user.email }}</p>
         </div>
+        {% if is_tutor_view %}
+            <a href="{% url 'student_list' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">
+                ← К списку учеников
+            </a>
+        {% endif %}
     </div>
 
     <!-- Статистика -->
@@ -30,27 +39,72 @@
         </div>
     </div>
 
-    <!-- Статистика по предметам -->
+    <!-- Полезные ссылки -->
     <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Статистика по предметам</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {% for subject, count in subjects_stats.items %}
-            <div class="bg-gray-50 rounded-lg p-4">
-                <h4 class="font-medium text-gray-900">{{ subject }}</h4>
-                <p class="text-2xl font-bold text-blue-600">{{ count }}</p>
-            </div>
-            {% endfor %}
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Полезные ссылки</h2>
+            {% if is_tutor_view %}
+                <a href="{% url 'admin:scheduler_resourcelink_add' %}?shared_with={{ user.id }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    + Добавить ссылку
+                </a>
+            {% endif %}
         </div>
+        {% if resource_links %}
+            <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                {% for category, links in resource_links.items %}
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="font-medium text-gray-900 mb-2">{{ category }}</h3>
+                        <div class="space-y-2">
+                            {% for link in links %}
+                                <div>
+                                    <a href="{{ link.url }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                        {{ link.title }}
+                                    </a>
+                                    {% if link.description %}
+                                        <p class="text-sm text-gray-500">{{ link.description }}</p>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-500">Пока нет добавленных ссылок</p>
+        {% endif %}
     </div>
 
     <!-- Мои преподаватели -->
     <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Мои преподаватели</h2>
+        <h2 class="text-xl font-semibold mb-4">
+            {% if is_tutor_view %}Преподаватели ученика{% else %}Мои преподаватели{% endif %}
+        </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for tutor in tutors %}
+            {% for relation in tutor_relations %}
             <div class="bg-gray-50 rounded-lg p-4">
-                <h4 class="font-medium text-gray-900">{{ tutor.get_full_name|default:tutor.username }}</h4>
-                <p class="text-sm text-gray-500">{{ tutor.email }}</p>
+                <h4 class="font-medium text-gray-900">{{ relation.tutor.get_full_name|default:relation.tutor.username }}</h4>
+                <p class="text-sm text-gray-500">{{ relation.tutor.email }}</p>
+                {% if relation.tutor.profile.telegram %}
+                    <p class="text-sm text-blue-600">
+                        <a href="https://t.me/{{ relation.tutor.profile.telegram }}" target="_blank">
+                            @{{ relation.tutor.profile.telegram }}
+                        </a>
+                    </p>
+                {% endif %}
+                {% if relation.subjects %}
+                    <div class="mt-2">
+                        <p class="text-sm text-gray-600">Предметы:</p>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            {% for subject in relation.subjects %}
+                                <span class="px-2 py-1 text-xs bg-gray-100 rounded-full">{{ subject }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="col-span-3 text-center text-gray-500">
+                {% if is_tutor_view %}У ученика пока нет преподавателей{% else %}У вас пока нет преподавателей{% endif %}
             </div>
             {% endfor %}
         </div>
@@ -116,6 +170,19 @@
             {% else %}
                 <p class="text-gray-500">Нет прошедших занятий</p>
             {% endif %}
+        </div>
+    </div>
+
+    <!-- Статистика по предметам -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Статистика по предметам</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for subject, count in subjects_stats.items %}
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="font-medium text-gray-900">{{ subject }}</h4>
+                <p class="text-2xl font-bold text-blue-600">{{ count }}</p>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>

@@ -5,7 +5,7 @@ from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from django.utils import timezone, translation
 from datetime import datetime, timedelta
-from .models import TimeSlot, Lesson, TutorSchedule, LessonPhoto, RecurringLessonTemplate
+from .models import TimeSlot, Lesson, TutorSchedule, LessonPhoto, RecurringLessonTemplate, ResourceLink, TutorStudent
 from .forms import CustomLoginForm, TimeSlotForm, BookSlotForm, RecurringLessonTemplateForm
 from django.core.exceptions import ValidationError
 from django.views.generic import TemplateView
@@ -75,13 +75,25 @@ def tutor_dashboard(request):
 def student_dashboard(request):
     # Получаем слоты на ближайшие 7 дней
     start_date = timezone.now()
-    
     end_date = start_date + timedelta(days=7)
     
-    available_slots = TimeSlot.objects.filter(
-        status='available',
-        datetime__range=[start_date, end_date]
-    ).order_by('datetime')
+    # Получаем активных преподавателей студента
+    my_tutors = User.objects.filter(
+        students_list__student=request.user,
+        students_list__is_active=True
+    )
+    
+    # Если у студента нет преподавателей
+    if not my_tutors.exists():
+        messages.info(request, 'У вас пока нет преподавателей. Дождитесь, пока преподаватель добавит вас к себе.')
+        available_slots = TimeSlot.objects.none()
+    else:
+        # Получаем доступные слоты только от преподавателей студента
+        available_slots = TimeSlot.objects.filter(
+            status='available',
+            datetime__range=[start_date, end_date],
+            tutor__in=my_tutors
+        ).order_by('datetime')
     
     my_lessons = Lesson.objects.filter(
         student=request.user
@@ -93,6 +105,7 @@ def student_dashboard(request):
         'my_lessons': my_lessons,
         'upcoming_lessons': my_lessons.filter(time_slot__datetime__gte=timezone.now()),
         'past_lessons': my_lessons.filter(time_slot__datetime__lt=timezone.now()).order_by('-time_slot__datetime'),
+        'my_tutors': my_tutors,  # Добавляем список преподавателей в контекст
     }
     return render(request, 'scheduler/student/dashboard.html', context)
 
@@ -121,10 +134,19 @@ def student_profile(request):
             subjects_stats[subject] = 0
         subjects_stats[subject] += 1
     
-    # Преподаватели
-    tutors = User.objects.filter(
-        time_slots__lesson__student=request.user
-    ).distinct()
+    # Получаем преподавателей через TutorStudent
+    tutor_relations = TutorStudent.objects.filter(
+        student=request.user,
+        is_active=True
+    ).select_related('tutor', 'tutor__profile')
+    
+    # Получаем ресурсы, доступные студенту
+    resource_links = {}
+    for link in ResourceLink.objects.filter(shared_with=request.user).order_by('category', 'title'):
+        category = link.get_category_display()
+        if category not in resource_links:
+            resource_links[category] = []
+        resource_links[category].append(link)
     
     return render(request, 'scheduler/student/profile.html', {
         'upcoming_lessons': upcoming_lessons,
@@ -133,7 +155,8 @@ def student_profile(request):
         'completed_lessons': completed_lessons,
         'cancelled_lessons': cancelled_lessons,
         'subjects_stats': subjects_stats,
-        'tutors': tutors
+        'tutor_relations': tutor_relations,  # Передаем связи вместо просто преподавателей
+        'resource_links': resource_links
     })
 
 @login_required
@@ -211,16 +234,17 @@ def book_slot(request, slot_id):
 @login_required
 @user_passes_test(is_tutor)
 def student_list(request):
-    # Получаем всех учеников преподавателя
-    students = User.objects.filter(
-        booked_slots__tutor=request.user
-    ).distinct().order_by('first_name', 'last_name')
+    # Получаем всех активных учеников преподавателя через TutorStudent
+    tutor_students = TutorStudent.objects.filter(
+        tutor=request.user,
+        is_active=True
+    ).select_related('student')
     
     # Для каждого ученика получаем статистику
     student_stats = []
-    for student in students:
+    for relation in tutor_students:
         lessons = Lesson.objects.filter(
-            student=student,
+            student=relation.student,
             time_slot__tutor=request.user
         )
         total_lessons = lessons.count()
@@ -228,11 +252,12 @@ def student_list(request):
         upcoming_lessons = lessons.filter(time_slot__datetime__gte=timezone.now()).count()
         
         student_stats.append({
-            'student': student,
+            'student': relation.student,
             'total_lessons': total_lessons,
             'completed_lessons': completed_lessons,
             'upcoming_lessons': upcoming_lessons,
-            'last_lesson': lessons.order_by('-time_slot__datetime').first()
+            'last_lesson': lessons.order_by('-time_slot__datetime').first(),
+            'subjects': relation.subjects  # Добавляем предметы из связи
         })
     
     return render(request, 'scheduler/tutor/student_list.html', {
@@ -244,7 +269,12 @@ def student_list(request):
 def student_detail(request, student_id):
     student = get_object_or_404(User, id=student_id)
     
-    # Получаем все занятия ученика
+    # Проверяем, есть ли у преподавателя доступ к этому ученику
+    if not TutorStudent.objects.filter(tutor=request.user, student=student, is_active=True).exists():
+        messages.error(request, 'У вас нет доступа к этому ученику')
+        return redirect('student_list')
+    
+    # Получаем все занятия ученика с этим преподавателем
     lessons = Lesson.objects.filter(
         student=student,
         time_slot__tutor=request.user
@@ -259,13 +289,39 @@ def student_detail(request, student_id):
     completed_lessons = lessons.filter(status='completed').count()
     cancelled_lessons = lessons.filter(status='cancelled').count()
     
-    return render(request, 'scheduler/tutor/student_detail.html', {
-        'student': student,
+    # Статистика по предметам
+    subjects_stats = {}
+    for lesson in lessons:
+        subject = lesson.get_subject_display()
+        if subject not in subjects_stats:
+            subjects_stats[subject] = 0
+        subjects_stats[subject] += 1
+    
+    # Получаем преподавателей через TutorStudent
+    tutor_relations = TutorStudent.objects.filter(
+        student=student,
+        is_active=True
+    ).select_related('tutor', 'tutor__profile')
+    
+    # Получаем ресурсы, доступные студенту
+    resource_links = {}
+    for link in ResourceLink.objects.filter(shared_with=student).order_by('category', 'title'):
+        category = link.get_category_display()
+        if category not in resource_links:
+            resource_links[category] = []
+        resource_links[category].append(link)
+    
+    return render(request, 'scheduler/student/profile.html', {
+        'user': student,  # Важно! Передаем student как user для шаблона
         'upcoming_lessons': upcoming_lessons,
         'past_lessons': past_lessons,
         'total_lessons': total_lessons,
         'completed_lessons': completed_lessons,
-        'cancelled_lessons': cancelled_lessons
+        'cancelled_lessons': cancelled_lessons,
+        'subjects_stats': subjects_stats,
+        'tutor_relations': tutor_relations,  # Передаем связи вместо просто преподавателей
+        'resource_links': resource_links,
+        'is_tutor_view': True  # Флаг для шаблона, чтобы знать, что это просмотр от преподавателя
     })
 
 @login_required
@@ -385,14 +441,14 @@ def recurring_templates_list(request):
 @user_passes_test(is_tutor)
 def recurring_template_create(request):
     if request.method == 'POST':
-        form = RecurringLessonTemplateForm(request.POST)
+        form = RecurringLessonTemplateForm(request.POST, tutor=request.user)
         if form.is_valid():
             template = form.save(commit=False)
             template.tutor = request.user
             template.save()
             return redirect('recurring_templates_list')
     else:
-        form = RecurringLessonTemplateForm()
+        form = RecurringLessonTemplateForm(tutor=request.user)
     return render(request, 'scheduler/tutor/recurring_templates/form.html', {'form': form, 'create': True})
 
 @login_required
@@ -400,10 +456,63 @@ def recurring_template_create(request):
 def recurring_template_edit(request, template_id):
     template = get_object_or_404(RecurringLessonTemplate, id=template_id, tutor=request.user)
     if request.method == 'POST':
-        form = RecurringLessonTemplateForm(request.POST, instance=template)
+        form = RecurringLessonTemplateForm(request.POST, instance=template, tutor=request.user)
         if form.is_valid():
             form.save()
             return redirect('recurring_templates_list')
     else:
-        form = RecurringLessonTemplateForm(instance=template)
+        form = RecurringLessonTemplateForm(instance=template, tutor=request.user)
     return render(request, 'scheduler/tutor/recurring_templates/form.html', {'form': form, 'create': False})
+
+@login_required
+@user_passes_test(is_tutor)
+def manage_students(request):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        student_id = request.POST.get('student_id')
+        
+        if action == 'add':
+            email = request.POST.get('email')
+            try:
+                student = User.objects.get(email=email, groups__name='Students')
+                # Проверяем, не добавлен ли уже этот студент
+                if not TutorStudent.objects.filter(tutor=request.user, student=student).exists():
+                    TutorStudent.objects.create(
+                        tutor=request.user,
+                        student=student,
+                        subjects=request.POST.getlist('subjects')
+                    )
+                    messages.success(request, f'Ученик {student.get_full_name()} успешно добавлен')
+                else:
+                    messages.error(request, 'Этот ученик уже добавлен к вам')
+            except User.DoesNotExist:
+                messages.error(request, 'Ученик с таким email не найден')
+        
+        elif action == 'remove' and student_id:
+            try:
+                relation = TutorStudent.objects.get(tutor=request.user, student_id=student_id)
+                relation.is_active = False
+                relation.save()
+                messages.success(request, 'Ученик успешно удален из вашего списка')
+            except TutorStudent.DoesNotExist:
+                messages.error(request, 'Ученик не найден')
+        
+        elif action == 'update' and student_id:
+            try:
+                relation = TutorStudent.objects.get(tutor=request.user, student_id=student_id)
+                relation.subjects = request.POST.getlist('subjects')
+                relation.save()
+                messages.success(request, 'Информация об ученике обновлена')
+            except TutorStudent.DoesNotExist:
+                messages.error(request, 'Ученик не найден')
+    
+    # Получаем всех активных учеников
+    students = TutorStudent.objects.filter(
+        tutor=request.user,
+        is_active=True
+    ).select_related('student')
+    
+    return render(request, 'scheduler/tutor/manage_students.html', {
+        'students': students,
+        'subjects': dict(Lesson.SUBJECT_CHOICES)
+    })

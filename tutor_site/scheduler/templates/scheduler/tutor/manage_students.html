@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Управление учениками{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-900">Управление учениками</h1>
+        <button onclick="document.getElementById('addStudentModal').classList.remove('hidden')" 
+                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+            + Добавить ученика
+        </button>
+    </div>
+
+    <!-- Список учеников -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        {% if students %}
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ученик
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Предметы
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Дата добавления
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Действия
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for relation in students %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ relation.student.get_full_name|default:relation.student.username }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {{ relation.student.email }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-wrap gap-1">
+                                    {% for subject in relation.subjects %}
+                                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                            {{ subjects|get_item:subject }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ relation.created_at|date:"d.m.Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button onclick="showEditModal('{{ relation.student.id }}', {{ relation.subjects|safe }})"
+                                        class="text-blue-600 hover:text-blue-900 mr-3">
+                                    Изменить
+                                </button>
+                                <button onclick="if(confirm('Удалить ученика из списка?')) document.getElementById('removeStudent{{ relation.student.id }}').submit()"
+                                        class="text-red-600 hover:text-red-900">
+                                    Удалить
+                                </button>
+                                <form id="removeStudent{{ relation.student.id }}" method="post" class="hidden">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="remove">
+                                    <input type="hidden" name="student_id" value="{{ relation.student.id }}">
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="p-6 text-center text-gray-500">
+                У вас пока нет учеников
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно добавления ученика -->
+<div id="addStudentModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Добавить ученика</h2>
+            <button onclick="this.closest('#addStudentModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Email ученика</label>
+                <input type="email" name="email" required
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Предметы</label>
+                <div class="mt-2 space-y-2">
+                    {% for code, name in subjects.items %}
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" name="subjects" value="{{ code }}"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2">{{ name }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" 
+                        onclick="this.closest('#addStudentModal').classList.add('hidden')"
+                        class="px-4 py-2 border rounded-md hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Добавить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования -->
+<div id="editStudentModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Изменить предметы</h2>
+            <button onclick="this.closest('#editStudentModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form method="post" class="space-y-4" id="editStudentForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="student_id" id="editStudentId">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Предметы</label>
+                <div class="mt-2 space-y-2">
+                    {% for code, name in subjects.items %}
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" name="subjects" value="{{ code }}"
+                                   class="edit-subject rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2">{{ name }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" 
+                        onclick="this.closest('#editStudentModal').classList.add('hidden')"
+                        class="px-4 py-2 border rounded-md hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showEditModal(studentId, subjects) {
+    // Сбрасываем все чекбоксы
+    document.querySelectorAll('.edit-subject').forEach(cb => cb.checked = false);
+    
+    // Отмечаем нужные предметы
+    subjects.forEach(subject => {
+        document.querySelector(`.edit-subject[value="${subject}"]`).checked = true;
+    });
+    
+    // Устанавливаем ID студента
+    document.getElementById('editStudentId').value = studentId;
+    
+    // Показываем модальное окно
+    document.getElementById('editStudentModal').classList.remove('hidden');
+}
+</script>
+{% endblock %} 

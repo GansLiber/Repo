@@ -6,8 +6,48 @@ from django.utils import timezone
 from PIL import Image
 import os
 from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 User = get_user_model()
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    telegram = models.CharField(max_length=100, blank=True, null=True, help_text='Telegram username')
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created and not hasattr(instance, 'profile'):
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
+    elif not UserProfile.objects.filter(user=instance).exists():
+        UserProfile.objects.create(user=instance)
+
+class ResourceLink(models.Model):
+    CATEGORY_CHOICES = [
+        ('textbook', 'Учебник'),
+        ('formulas', 'Формулы'),
+        ('whiteboard', 'Онлайн доска'),
+        ('other', 'Другое'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    url = models.URLField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_resources')
+    shared_with = models.ManyToManyField(User, related_name='available_resources', blank=True)
+
+    def __str__(self):
+        return self.title
 
 class TutorSchedule(models.Model):
     DAYS_OF_WEEK = [
@@ -163,3 +203,18 @@ class RecurringLessonTemplate(models.Model):
 
     def __str__(self):
         return f"{self.student} {self.get_weekday_display()} {self.time} ({self.subject})"
+
+class TutorStudent(models.Model):
+    tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='students_list')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tutors_list')
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    subjects = models.JSONField(default=list, help_text='Список предметов, которые преподаёт')
+
+    class Meta:
+        unique_together = ['tutor', 'student']
+        verbose_name = 'Связь преподаватель-ученик'
+        verbose_name_plural = 'Связи преподаватель-ученик'
+
+    def __str__(self):
+        return f"{self.tutor.get_full_name()} - {self.student.get_full_name()}"

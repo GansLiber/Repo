@@ -32,11 +32,65 @@
 <div class="space-y-6">
     <h1 class="text-2xl font-bold text-gray-900">Личный кабинет</h1>
 
+    <!-- Мои преподаватели -->
+    <details open class="h-full">
+        <summary class="text-xl font-semibold text-gray-900">Мои преподаватели</summary>
+        <div>
+            {% if my_tutors %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for tutor in my_tutors %}
+                        <div class="bg-white rounded-lg shadow p-4">
+                            <h3 class="font-medium text-lg">{{ tutor.get_full_name|default:tutor.username }}</h3>
+                            <p class="text-gray-600">{{ tutor.email }}</p>
+                            {% if tutor.profile.telegram %}
+                                <p class="text-blue-600">
+                                    <a href="https://t.me/{{ tutor.profile.telegram }}" target="_blank">
+                                        @{{ tutor.profile.telegram }}
+                                    </a>
+                                </p>
+                            {% endif %}
+                            {% with tutor_subjects=tutor.students_list.get.subjects %}
+                                {% if tutor_subjects %}
+                                    <div class="mt-2">
+                                        <p class="text-sm text-gray-600">Предметы:</p>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            {% for subject in tutor_subjects %}
+                                                <span class="px-2 py-1 text-xs bg-gray-100 rounded-full">{{ subject }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">У вас пока нет преподавателей</p>
+            {% endif %}
+        </div>
+    </details>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Доступные слоты -->
         <details open class="h-full">
             <summary class="text-xl font-semibold text-gray-900">Доступные слоты</summary>
             <div>
+                {% if not my_tutors %}
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    У вас пока нет преподавателей. Дождитесь, пока преподаватель добавит вас к себе.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
                 {% if available_slots %}
                     <div class="space-y-4">
                         {% for slot in available_slots %}
@@ -44,9 +98,24 @@
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <p class="font-medium">{{ slot.datetime|date_with_weekday }}</p>
-                                        <p class="text-sm text-gray-600">Длительность: {{ slot.duration }}</p>
+                                        <p class="text-sm text-gray-600">Время: {{ slot.datetime|time:'H:i' }}</p>
+                                        <p class="text-sm text-gray-600">Длительность: {{ slot.duration }} мин</p>
+                                        <p class="text-sm text-gray-600">Преподаватель: {{ slot.tutor.get_full_name|default:slot.tutor.username }}</p>
+                                        {% if slot.tutor.profile.telegram %}
+                                            <p class="text-sm text-blue-600">
+                                                <a href="https://t.me/{{ slot.tutor.profile.telegram }}" target="_blank">
+                                                    @{{ slot.tutor.profile.telegram }}
+                                                </a>
+                                            </p>
+                                        {% endif %}
                                     </div>
+                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                        {{ slot.get_status_display }}
+                                    </span>
                                 </div>
+                                {% if slot.notes %}
+                                    <p class="mt-2 text-sm text-gray-600">Заметки: {{ slot.notes }}</p>
+                                {% endif %}
                                 <div class="mt-4">
                                     <a href="{% url 'book_slot' slot.id %}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
                                         Записаться
