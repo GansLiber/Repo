@@ -25,4 +25,6 @@ urlpatterns = [
     path('tutor/recurring-templates/', views.recurring_templates_list, name='recurring_templates_list'),
     path('tutor/recurring-templates/create/', views.recurring_template_create, name='recurring_template_create'),
     path('tutor/recurring-templates/<int:template_id>/edit/', views.recurring_template_edit, name='recurring_template_edit'),
+    path('lesson/<int:lesson_id>/photos/', views.manage_lesson_photos, name='manage_lesson_photos'),
+    path('photo/<int:photo_id>/delete/', views.delete_lesson_photo, name='delete_lesson_photo'),
 ]

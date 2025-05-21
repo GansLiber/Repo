@@ -21,10 +21,16 @@ class MultipleFileField(forms.FileField):
 
 class CustomLoginForm(AuthenticationForm):
     username = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Имя пользователя'})
+        widget=forms.TextInput(attrs={
+            'class': 'appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm',
+            'placeholder': 'Имя пользователя'
+        })
     )
     password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Пароль'})
+        widget=forms.PasswordInput(attrs={
+            'class': 'appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm',
+            'placeholder': 'Пароль'
+        })
     )
 
 class TimeSlotForm(forms.ModelForm):
@@ -75,4 +81,10 @@ class RecurringLessonTemplateForm(forms.ModelForm):
             'time': forms.TimeInput(attrs={'type': 'time'}),
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'end_date': forms.DateInput(attrs={'type': 'date'}),
-        } 
+        }
+
+class LessonPhotosForm(forms.Form):
+    photos = MultipleFileField(
+        widget=MultipleFileInput(attrs={'class': 'hidden'}),
+        required=False
+    ) 

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load scheduler_extras %}
+
+{% block title %}Фотографии занятия{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Фотографии занятия</h1>
+            <p class="text-sm text-gray-500">
+                {{ lesson.time_slot.datetime|date_with_weekday }}, 
+                {{ lesson.get_subject_display }}
+            </p>
+        </div>
+        <a href="{% if request.user == lesson.student %}{% url 'student_dashboard' %}{% else %}{% url 'tutor_dashboard' %}{% endif %}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">
+            ← Назад
+        </a>
+    </div>
+
+    <!-- Форма загрузки -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Добавить фотографии</h2>
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div class="flex items-center justify-center w-full">
+                <label class="w-full flex flex-col items-center px-4 py-6 bg-white text-blue rounded-lg shadow-lg tracking-wide uppercase border border-blue cursor-pointer hover:bg-blue-50">
+                    <svg style="width: 100px; height: 100px;" class="w-8 h-8 text-blue-600" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4-4-4 4h3v3h2v-3z" />
+                    </svg>
+                    <span class="mt-2 text-base leading-normal">Выберите файлы</span>
+                    {{ form.photos }}
+                </label>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                    Загрузить
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Галерея фотографий -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Загруженные фотографии</h2>
+        {% if photos %}
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {% for photo in photos %}
+                    <div class="relative group">
+                        <img src="{{ photo.thumbnail.url }}" 
+                             alt="Фото занятия" 
+                             class="w-full h-48 object-cover rounded-lg"
+                             onclick="window.open('{{ photo.photo.url }}', '_blank')"
+                             style="cursor: pointer;">
+                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <form method="post" action="{% url 'delete_lesson_photo' photo.id %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" 
+                                        class="bg-red-600 text-white p-2 rounded-full hover:bg-red-700"
+                                        onclick="return confirm('Вы уверены, что хотите удалить это фото?')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-500 text-center">Пока нет загруженных фотографий</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.querySelector('input[type="file"]').addEventListener('change', function(e) {
+    const fileCount = e.target.files.length;
+    const label = e.target.parentElement.querySelector('span');
+    if (fileCount > 0) {
+        label.textContent = `Выбрано файлов: ${fileCount}`;
+    } else {
+        label.textContent = 'Выберите файлы';
+    }
+});
+</script>
+{% endblock %} 

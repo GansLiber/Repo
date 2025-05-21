@@ -6,11 +6,13 @@ from django.contrib import messages
 from django.utils import timezone, translation
 from datetime import datetime, timedelta
 from .models import TimeSlot, Lesson, TutorSchedule, LessonPhoto, RecurringLessonTemplate, ResourceLink, TutorStudent
-from .forms import CustomLoginForm, TimeSlotForm, BookSlotForm, RecurringLessonTemplateForm
+from .forms import CustomLoginForm, TimeSlotForm, BookSlotForm, RecurringLessonTemplateForm, LessonPhotosForm
 from django.core.exceptions import ValidationError
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 import calendar
+import os
+from django.contrib.auth import login
 
 class CustomLoginView(LoginView):
     form_class = CustomLoginForm
@@ -43,7 +45,20 @@ def home_view(request):
             return redirect('tutor_dashboard')
         elif is_student(request.user):
             return redirect('student_dashboard')
-    return render(request, 'scheduler/home.html')
+    
+    if request.method == 'POST':
+        form = CustomLoginForm(data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            if is_tutor(user):
+                return redirect('tutor_dashboard')
+            elif is_student(user):
+                return redirect('student_dashboard')
+    else:
+        form = CustomLoginForm()
+    
+    return render(request, 'scheduler/login.html', {'form': form})
 
 @login_required
 @user_passes_test(is_tutor)
@@ -515,4 +530,59 @@ def manage_students(request):
     return render(request, 'scheduler/tutor/manage_students.html', {
         'students': students,
         'subjects': dict(Lesson.SUBJECT_CHOICES)
+    })
+
+@login_required
+def manage_lesson_photos(request, lesson_id):
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+    
+    # Проверяем, что пользователь имеет доступ к уроку
+    if not (request.user == lesson.student or request.user == lesson.time_slot.tutor):
+        messages.error(request, 'У вас нет доступа к этому уроку')
+        return redirect('student_dashboard' if is_student(request.user) else 'tutor_dashboard')
+    
+    if request.method == 'POST':
+        form = LessonPhotosForm(request.POST, request.FILES)
+        if form.is_valid():
+            photos = request.FILES.getlist('photos')
+            for photo in photos:
+                LessonPhoto.objects.create(lesson=lesson, photo=photo)
+            messages.success(request, 'Фотографии успешно добавлены')
+            return redirect('manage_lesson_photos', lesson_id=lesson.id)
+    else:
+        form = LessonPhotosForm()
+    
+    photos = lesson.photos.all().order_by('-created_at')
+    return render(request, 'scheduler/lesson/photos.html', {
+        'lesson': lesson,
+        'photos': photos,
+        'form': form
+    })
+
+@login_required
+def delete_lesson_photo(request, photo_id):
+    photo = get_object_or_404(LessonPhoto, id=photo_id)
+    lesson = photo.lesson
+    
+    # Проверяем, что пользователь имеет доступ к уроку
+    if not (request.user == lesson.student or request.user == lesson.time_slot.tutor):
+        messages.error(request, 'У вас нет доступа к этой фотографии')
+        return redirect('student_dashboard' if is_student(request.user) else 'tutor_dashboard')
+    
+    if request.method == 'POST':
+        # Удаляем файлы
+        if photo.photo:
+            if os.path.exists(photo.photo.path):
+                os.remove(photo.photo.path)
+        if photo.thumbnail:
+            if os.path.exists(photo.thumbnail.path):
+                os.remove(photo.thumbnail.path)
+        
+        photo.delete()
+        messages.success(request, 'Фотография удалена')
+        return redirect('manage_lesson_photos', lesson_id=lesson.id)
+    
+    return render(request, 'scheduler/lesson/delete_photo.html', {
+        'photo': photo,
+        'lesson': lesson
     })
