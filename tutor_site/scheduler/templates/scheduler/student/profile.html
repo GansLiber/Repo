@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load scheduler_extras %}
 
-{% block title %}{% if is_tutor_view %}Профиль {{ user.get_full_name|default:user.username }}{% else %}Мой профиль{% endif %}{% endblock %}
+{% block title %}{% if is_tutor_view %}Профиль {{ viewed_user.get_full_name|default:viewed_user.username }}{% else %}Мой профиль{% endif %}{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -9,12 +9,12 @@
         <div>
             <h1 class="text-2xl font-bold text-gray-900">
                 {% if is_tutor_view %}
-                    Профиль {{ user.get_full_name|default:user.username }}
+                    Профиль {{ viewed_user.get_full_name|default:viewed_user.username }}
                 {% else %}
                     Мой профиль
                 {% endif %}
             </h1>
-            <p class="text-sm text-gray-500">{{ user.email }}</p>
+            <p class="text-sm text-gray-500">{{ viewed_user.email }}</p>
         </div>
         {% if is_tutor_view %}
             <a href="{% url 'student_list' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">
@@ -44,9 +44,10 @@
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-semibold">Полезные ссылки</h2>
             {% if is_tutor_view %}
-                <a href="{% url 'admin:scheduler_resourcelink_add' %}?shared_with={{ user.id }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <button onclick="document.getElementById('addLinkModal').classList.remove('hidden')" 
+                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                     + Добавить ссылку
-                </a>
+                </button>
             {% endif %}
         </div>
         {% if resource_links %}
@@ -72,6 +73,60 @@
         {% else %}
             <p class="text-gray-500">Пока нет добавленных ссылок</p>
         {% endif %}
+    </div>
+
+    <!-- Модальное окно добавления ссылки -->
+    <div id="addLinkModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Добавить ссылку</h2>
+                <button onclick="this.closest('#addLinkModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_link">
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Название</label>
+                    <input type="text" name="title" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">URL</label>
+                    <input type="url" name="url" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Описание</label>
+                    <textarea name="description" rows="3"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Категория</label>
+                    <input type="text" name="category" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex justify-end gap-3">
+                    <button type="button" 
+                            onclick="this.closest('#addLinkModal').classList.add('hidden')"
+                            class="px-4 py-2 border rounded-md hover:bg-gray-50">
+                        Отмена
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Добавить
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Мои преподаватели -->

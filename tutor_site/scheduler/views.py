@@ -132,6 +132,30 @@ def student_profile(request):
         student=request.user
     ).order_by('-time_slot__datetime')
     
+    if request.method == 'POST' and request.POST.get('action') == 'add_link':
+        # Проверяем, что запрос от преподавателя
+        is_tutor_view = request.user.groups.filter(name='Tutors').exists()
+        if is_tutor_view:
+            try:
+                # Получаем ID ученика из URL
+                student_id = request.GET.get('student_id')
+                student = get_object_or_404(User, id=student_id)
+                ResourceLink.objects.create(
+                    title=request.POST['title'],
+                    url=request.POST['url'],
+                    description=request.POST.get('description', ''),
+                    category=request.POST['category'],
+                    created_by=request.user
+                )
+                link = ResourceLink.objects.get(id=request.POST['link_id'])
+                link.shared_with.add(student)
+                messages.success(request, 'Ссылка успешно добавлена!')
+            except Exception as e:
+                messages.error(request, f'Ошибка при добавлении ссылки: {str(e)}')
+        else:
+            messages.error(request, 'У вас нет прав для добавления ссылок')
+        return redirect('student_profile')
+    
     # Разделяем на предстоящие и прошедшие
     upcoming_lessons = lessons.filter(time_slot__datetime__gte=timezone.now())
     past_lessons = lessons.filter(time_slot__datetime__lt=timezone.now())
@@ -170,8 +194,10 @@ def student_profile(request):
         'completed_lessons': completed_lessons,
         'cancelled_lessons': cancelled_lessons,
         'subjects_stats': subjects_stats,
-        'tutor_relations': tutor_relations,  # Передаем связи вместо просто преподавателей
-        'resource_links': resource_links
+        'tutor_relations': tutor_relations,
+        'resource_links': resource_links,
+        'is_tutor_view': request.user.groups.filter(name='Tutors').exists(),
+        'viewed_user': request.user
     })
 
 @login_required
@@ -295,6 +321,21 @@ def student_detail(request, student_id):
         time_slot__tutor=request.user
     ).order_by('-time_slot__datetime')
     
+    if request.method == 'POST' and request.POST.get('action') == 'add_link':
+        try:
+            link = ResourceLink.objects.create(
+                title=request.POST['title'],
+                url=request.POST['url'],
+                description=request.POST.get('description', ''),
+                category=request.POST['category'],
+                created_by=request.user
+            )
+            link.shared_with.add(student)
+            messages.success(request, 'Ссылка успешно добавлена!')
+        except Exception as e:
+            messages.error(request, f'Ошибка при добавлении ссылки: {str(e)}')
+        return redirect('student_detail', student_id=student_id)
+    
     # Разделяем на предстоящие и прошедшие
     upcoming_lessons = lessons.filter(time_slot__datetime__gte=timezone.now())
     past_lessons = lessons.filter(time_slot__datetime__lt=timezone.now())
@@ -327,16 +368,17 @@ def student_detail(request, student_id):
         resource_links[category].append(link)
     
     return render(request, 'scheduler/student/profile.html', {
-        'user': student,  # Важно! Передаем student как user для шаблона
+        'viewed_user': student,  # Для отображения данных ученика
         'upcoming_lessons': upcoming_lessons,
         'past_lessons': past_lessons,
         'total_lessons': total_lessons,
         'completed_lessons': completed_lessons,
         'cancelled_lessons': cancelled_lessons,
         'subjects_stats': subjects_stats,
-        'tutor_relations': tutor_relations,  # Передаем связи вместо просто преподавателей
+        'tutor_relations': tutor_relations,
         'resource_links': resource_links,
-        'is_tutor_view': True  # Флаг для шаблона, чтобы знать, что это просмотр от преподавателя
+        'is_tutor_view': True,
+        'viewing_as_tutor': True  # Добавляем флаг для шапки
     })
 
 @login_required

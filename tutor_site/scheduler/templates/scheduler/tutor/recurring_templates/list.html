@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Шаблоны занятий{% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
+<div class="max-w-4xl mx-auto space-y-6">
     <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold">Шаблоны занятий</h1>
         <a href="{% url 'recurring_template_create' %}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Создать шаблон</a>
@@ -10,7 +10,7 @@
         {% if templates %}
         <table class="w-full text-sm">
             <thead>
-                <tr class="text-gray-500">
+                <tr class="text-gray-500 [&>th]:px-4 divide-x divide-gray-200">
                     <th class="text-left">Ученик</th>
                     <th class="text-left">День</th>
                     <th class="text-left">Время</th>
@@ -21,9 +21,9 @@
                     <th class="text-left"></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-200">
                 {% for t in templates %}
-                <tr class="border-b last:border-0">
+                <tr class="[&>td]:px-4 divide-x divide-gray-200">
                     <td>{{ t.student.get_full_name|default:t.student.username }}</td>
                     <td>{{ t.get_weekday_display }}</td>
                     <td>{{ t.time|time:'H:i' }}</td>

@@ -7,24 +7,22 @@
     <title>{% block title %}Сайт репетитора{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
 </head>
-<body style="
-    min-height: 100vh;
-    margin: 0;" class="min-h-screen bg-gray-50">
+<body class="flex flex-col min-h-screen bg-gray-50">
     <nav class="bg-gray-800 text-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-[80rem] mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center">
                     <a href="{% url 'home' %}" class="text-xl font-bold">Сайт репетитора</a>
                 </div>
                 <div class="flex items-center space-x-4">
                     {% if user.is_authenticated %}
-                        {% if user.groups.all.0.name == 'Tutors' %}
+                        {% if not viewing_as_tutor and user.groups.all.0.name == 'Tutors' %}
                             <a href="{% url 'tutor_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Панель управления</a>
                             <a href="{% url 'student_list' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Мои ученики</a>
                             <a href="{% url 'tutor_calendar' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Календарь</a>
                             <a href="{% url 'recurring_templates_list' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Шаблоны занятий</a>
                             <a href="{% url 'create_time_slot' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Создать слот</a>
-                        {% elif user.groups.all.0.name == 'Students' %}
+                        {% elif not viewing_as_tutor and user.groups.all.0.name == 'Students' %}
                             <a href="{% url 'student_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Мои занятия</a>
                             <a href="{% url 'student_profile' %}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700">Мой профиль</a>
                         {% endif %}
@@ -53,7 +51,7 @@
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="flex-grow w-full max-w-[80rem] mx-auto px-4 py-6">
         {% if messages %}
             <div class="mb-4">
                 {% for message in messages %}
@@ -68,8 +66,8 @@
     </main>
 
     <footer class="bg-gray-800 text-white mt-auto">
-        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-            <p class="text-center text-sm">© 2024 Сайт репетитора. Все права защищены.</p>
+        <div class="w-full max-w-[80rem] mx-auto px-4">
+            <p class="text-center text-sm">© 2025 Сайт репетитора. Все права защищены.</p>
         </div>
     </footer>
 </body>
